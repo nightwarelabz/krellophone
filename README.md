@@ -72,6 +72,21 @@ score tables, then `ext.inc`, `engine_body.krell`, `noteon.krell`,
 - **examples/epicycle-audio/** — `epicycle-audio.krell`: the Fourier
   epicycle drawing, heard — every wheel of the drawing whose frequency
   falls in the audible band becomes a tone.
+- **examples/moonlight/** — Beethoven, *Moonlight Sonata* (Piano Sonata
+  No. 14, first movement), complete: 1,142 note events from the Mutopia
+  public-domain score rendered by the engine, with editorial dynamics
+  (the score MIDI carries uniform velocity). `midparse.py` and
+  `encode_moon.py` are the MIDI → tables pipeline. The performance is a
+  release asset (`moonlight.mp3`).
+- **examples/fibonacci/** — Fibonacci computed and filmed entirely in
+  Krell: `fib.krell` cross-verifies four Fibonacci engines and prints
+  exact F(1000) and F(10000); the film programs (`fibfilm`, `fibfilm2`,
+  `fibfilm4`) draw 2,584 = F(18) phyllotaxis seeds by the golden angle
+  around a golden logarithmic spiral. `fibfilm2` and `fibfilm4` embed
+  the Moonlight event tables and analyze the music in Krell to drive
+  the light — in `fibfilm4` the field spirals with differential shear
+  and strong onsets launch wavefronts from the center through the
+  total circumference. The films are release assets.
 
 ## License
 
