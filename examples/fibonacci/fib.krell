@@ -1,0 +1,2188 @@
+; FIBONACCI, COMPUTED ENTIRELY IN KRELL
+; Four independent engines (naive recursion, iteration, fast doubling,
+; binary matrix power) cross-verify each other and five identities;
+; exact big-integer Fibonacci to F(10000) in base-10^9 limbs; golden-
+; ratio convergence printed digit by digit. Host services: write, malloc.
+
+extern write(i32, ptr, i64) -> i64
+extern malloc(i64) -> ptr
+
+data d0: i8 = { 10, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 10 }
+data d1: i8 = { 70, 73, 66, 79, 78, 65, 67, 67, 73, 44, 32, 67, 79, 77, 80, 85, 84, 69, 68, 32, 69, 78, 84, 73, 82, 69, 76, 89, 32, 73, 78, 32, 75, 82, 69, 76, 76, 10 }
+data d2: i8 = { 102, 111, 117, 114, 32, 97, 108, 103, 111, 114, 105, 116, 104, 109, 115, 32, 45, 32, 111, 110, 101, 32, 115, 101, 113, 117, 101, 110, 99, 101, 32, 45, 32, 101, 118, 101, 114, 121, 32, 114, 101, 115, 117, 108, 116, 32, 99, 114, 111, 115, 115, 45, 99, 104, 101, 99, 107, 101, 100, 10 }
+data d3: i8 = { 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 10 }
+data d4: i8 = { 10, 45, 45, 45, 32, 84, 72, 69, 32, 83, 69, 81, 85, 69, 78, 67, 69, 58, 32, 70, 40, 48, 41, 32, 46, 46, 32, 70, 40, 57, 50, 41, 44, 32, 105, 116, 101, 114, 97, 116, 105, 118, 101, 32, 101, 110, 103, 105, 110, 101, 32, 45, 45, 45, 10 }
+data d5: i8 = { 70, 40 }
+data d6: i8 = { 41, 32, 61, 32 }
+data d7: i8 = { 10 }
+data d8: i8 = { 10, 45, 45, 45, 32, 67, 82, 79, 83, 83, 45, 86, 69, 82, 73, 70, 73, 67, 65, 84, 73, 79, 78, 32, 40, 99, 111, 117, 110, 116, 115, 32, 99, 111, 109, 112, 117, 116, 101, 100, 32, 98, 121, 32, 116, 104, 101, 32, 112, 114, 111, 103, 114, 97, 109, 41, 32, 45, 45, 45, 10 }
+data d9: i8 = { 110, 97, 105, 118, 101, 32, 114, 101, 99, 117, 114, 115, 105, 111, 110, 32, 32, 32, 118, 115, 32, 105, 116, 101, 114, 97, 116, 105, 118, 101, 32, 32, 32, 32, 110, 61, 48, 46, 46, 50, 56, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 58, 32 }
+data d10: i8 = { 102, 97, 115, 116, 32, 100, 111, 117, 98, 108, 105, 110, 103, 32, 32, 32, 32, 32, 118, 115, 32, 105, 116, 101, 114, 97, 116, 105, 118, 101, 32, 32, 32, 32, 110, 61, 48, 46, 46, 57, 48, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 58, 32 }
+data d11: i8 = { 109, 97, 116, 114, 105, 120, 32, 112, 111, 119, 101, 114, 32, 32, 32, 32, 32, 32, 118, 115, 32, 105, 116, 101, 114, 97, 116, 105, 118, 101, 32, 32, 32, 32, 110, 61, 48, 46, 46, 57, 48, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 58, 32 }
+data d12: i8 = { 67, 97, 115, 115, 105, 110, 105, 32, 105, 100, 101, 110, 116, 105, 116, 121, 32, 32, 70, 40, 110, 45, 49, 41, 70, 40, 110, 43, 49, 41, 45, 70, 40, 110, 41, 94, 50, 32, 61, 32, 40, 45, 49, 41, 94, 110, 32, 32, 110, 61, 49, 46, 46, 52, 54, 32, 58, 32 }
+data d13: i8 = { 115, 117, 109, 109, 97, 116, 105, 111, 110, 32, 32, 32, 32, 32, 32, 32, 32, 32, 115, 117, 109, 32, 70, 40, 105, 41, 32, 61, 32, 70, 40, 110, 43, 50, 41, 45, 49, 32, 32, 32, 32, 32, 32, 32, 110, 61, 48, 46, 46, 56, 56, 32, 32, 58, 32 }
+data d14: i8 = { 103, 99, 100, 32, 105, 100, 101, 110, 116, 105, 116, 121, 32, 32, 32, 32, 32, 32, 103, 99, 100, 40, 70, 40, 109, 41, 44, 70, 40, 110, 41, 41, 32, 61, 32, 70, 40, 103, 99, 100, 40, 109, 44, 110, 41, 41, 32, 32, 109, 44, 110, 61, 49, 46, 46, 50, 52, 32, 58, 32 }
+data d15: i8 = { 97, 100, 100, 105, 116, 105, 111, 110, 32, 102, 111, 114, 109, 117, 108, 97, 32, 32, 70, 40, 109, 43, 110, 41, 61, 70, 40, 109, 41, 70, 40, 110, 43, 49, 41, 43, 70, 40, 109, 45, 49, 41, 70, 40, 110, 41, 32, 32, 109, 44, 110, 61, 50, 46, 46, 51, 48, 32, 58, 32 }
+data d16: i8 = { 47 }
+data d17: i8 = { 32, 97, 103, 114, 101, 101 }
+data d18: i8 = { 10, 45, 45, 45, 32, 84, 72, 69, 32, 71, 79, 76, 68, 69, 78, 32, 82, 65, 84, 73, 79, 44, 32, 70, 82, 79, 77, 32, 84, 72, 69, 32, 83, 69, 81, 85, 69, 78, 67, 69, 32, 73, 84, 83, 69, 76, 70, 32, 45, 45, 45, 10 }
+data d19: i8 = { 70, 40 }
+data d20: i8 = { 43, 49, 41, 32, 47, 32, 70, 40 }
+data d21: i8 = { 41, 32, 61, 32 }
+data d22: i8 = { 112, 104, 105, 32, 116, 111, 32, 49, 53, 32, 112, 108, 97, 99, 101, 115, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 61, 32, 49, 46, 54, 49, 56, 48, 51, 51, 57, 56, 56, 55, 52, 57, 56, 57, 53, 10 }
+data d23: i8 = { 46 }
+data d24: i8 = { 10, 45, 45, 45, 32, 84, 72, 69, 32, 67, 79, 83, 84, 32, 79, 70, 32, 75, 78, 79, 87, 73, 78, 71, 58, 32, 79, 80, 69, 82, 65, 84, 73, 79, 78, 32, 67, 79, 85, 78, 84, 83, 32, 70, 79, 82, 32, 110, 32, 61, 32, 51, 50, 32, 45, 45, 45, 10 }
+data d25: i8 = { 110, 97, 105, 118, 101, 32, 114, 101, 99, 117, 114, 115, 105, 111, 110, 32, 58, 32 }
+data d26: i8 = { 32, 102, 117, 110, 99, 116, 105, 111, 110, 32, 99, 97, 108, 108, 115, 32, 116, 111, 32, 108, 101, 97, 114, 110, 32, 116, 104, 97, 116, 32, 70, 40, 51, 50, 41, 32, 61, 32 }
+data d27: i8 = { 105, 116, 101, 114, 97, 116, 105, 118, 101, 32, 32, 32, 32, 32, 32, 32, 58, 32 }
+data d28: i8 = { 32, 97, 100, 100, 105, 116, 105, 111, 110, 115, 32, 116, 111, 32, 108, 101, 97, 114, 110, 32, 70, 40, 51, 50, 41, 10 }
+data d29: i8 = { 102, 97, 115, 116, 32, 100, 111, 117, 98, 108, 105, 110, 103, 32, 32, 32, 58, 32 }
+data d30: i8 = { 32, 109, 117, 108, 116, 105, 112, 108, 105, 99, 97, 116, 105, 111, 110, 115, 32, 97, 99, 114, 111, 115, 115, 32 }
+data d31: i8 = { 32, 114, 101, 99, 117, 114, 115, 105, 111, 110, 32, 108, 101, 118, 101, 108, 115, 10 }
+data d32: i8 = { 109, 97, 116, 114, 105, 120, 32, 112, 111, 119, 101, 114, 32, 32, 32, 32, 58, 32 }
+data d33: i8 = { 32, 109, 97, 116, 114, 105, 120, 32, 109, 117, 108, 116, 105, 112, 108, 105, 99, 97, 116, 105, 111, 110, 115, 32, 61, 32 }
+data d34: i8 = { 32, 115, 99, 97, 108, 97, 114, 32, 109, 117, 108, 116, 105, 112, 108, 105, 99, 97, 116, 105, 111, 110, 115, 10 }
+data d35: i8 = { 10, 45, 45, 45, 32, 66, 69, 89, 79, 78, 68, 32, 54, 52, 32, 66, 73, 84, 83, 58, 32, 69, 88, 65, 67, 84, 32, 66, 73, 71, 32, 70, 73, 66, 79, 78, 65, 67, 67, 73, 32, 40, 98, 97, 115, 101, 32, 49, 48, 94, 57, 32, 108, 105, 109, 98, 115, 44, 32, 105, 110, 32, 75, 114, 101, 108, 108, 41, 32, 45, 45, 45, 10 }
+data d36: i8 = { 70, 40, 49, 48, 48, 48, 41, 32, 32, 61, 32 }
+data d37: i8 = { 70, 40, 49, 48, 48, 48, 48, 41, 32, 61, 32 }
+data d38: i8 = { 32, 32, 32, 32, 100, 105, 103, 105, 116, 115, 32, 32, 32, 32, 32, 32, 32, 32, 58, 32 }
+data d39: i8 = { 32, 32, 32, 32, 100, 105, 103, 105, 116, 32, 115, 117, 109, 32, 32, 32, 32, 32, 58, 32 }
+data d40: i8 = { 32, 32, 32, 32, 108, 97, 115, 116, 32, 57, 32, 100, 105, 103, 105, 116, 115, 32, 58, 32 }
+data d41: i8 = { 32, 32, 32, 32, 108, 101, 97, 100, 105, 110, 103, 32, 100, 105, 103, 105, 116, 115, 58, 32 }
+data d42: i8 = { 46, 46, 46 }
+data d43: i8 = { 10, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 10, 86, 69, 82, 68, 73, 67, 84, 58, 32, 69, 86, 69, 82, 89, 32, 67, 72, 69, 67, 75, 32, 80, 65, 83, 83, 69, 68, 32, 45, 32 }
+data d44: i8 = { 10, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 10, 86, 69, 82, 68, 73, 67, 84, 58, 32, 70, 65, 73, 76, 85, 82, 69, 83, 32, 68, 69, 84, 69, 67, 84, 69, 68, 32, 45, 32 }
+data d45: i8 = { 32, 102, 97, 105, 108, 117, 114, 101, 115, 32, 111, 117, 116, 32, 111, 102, 32 }
+data d46: i8 = { 32, 99, 104, 101, 99, 107, 115, 10, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 61, 10 }
+
+fn w_banner1() -> void {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 66
+    %_s7 = iconst i32 66
+    %_s8 = iconst i8 66
+    %p = dataptr 0
+    %r = call i64 write(1, %p, 66)
+    ret
+}
+
+fn w_banner2() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 38
+    %_s4 = iconst i32 38
+    %_s5 = iconst i8 38
+    %p = dataptr 1
+    %r = call i64 write(1, %p, 38)
+    ret
+}
+
+fn w_banner3() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 2
+    %_s4 = iconst i32 2
+    %_s5 = iconst i8 2
+    %_s6 = iconst i64 60
+    %_s7 = iconst i32 60
+    %_s8 = iconst i8 60
+    %p = dataptr 2
+    %r = call i64 write(1, %p, 60)
+    ret
+}
+
+fn w_banner4() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 3
+    %_s4 = iconst i32 3
+    %_s5 = iconst i8 3
+    %_s6 = iconst i64 65
+    %_s7 = iconst i32 65
+    %_s8 = iconst i8 65
+    %p = dataptr 3
+    %r = call i64 write(1, %p, 65)
+    ret
+}
+
+fn w_sec_table() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 4
+    %_s4 = iconst i32 4
+    %_s5 = iconst i8 4
+    %_s6 = iconst i64 55
+    %_s7 = iconst i32 55
+    %_s8 = iconst i8 55
+    %p = dataptr 4
+    %r = call i64 write(1, %p, 55)
+    ret
+}
+
+fn w_fopen() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 2
+    %_s4 = iconst i32 2
+    %_s5 = iconst i8 2
+    %_s6 = iconst i64 5
+    %_s7 = iconst i32 5
+    %_s8 = iconst i8 5
+    %p = dataptr 5
+    %r = call i64 write(1, %p, 2)
+    ret
+}
+
+fn w_eq() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 4
+    %_s4 = iconst i32 4
+    %_s5 = iconst i8 4
+    %_s6 = iconst i64 6
+    %_s7 = iconst i32 6
+    %_s8 = iconst i8 6
+    %p = dataptr 6
+    %r = call i64 write(1, %p, 4)
+    ret
+}
+
+fn w_nl() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 7
+    %_s4 = iconst i32 7
+    %_s5 = iconst i8 7
+    %p = dataptr 7
+    %r = call i64 write(1, %p, 1)
+    ret
+}
+
+fn w_sec_verify() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 8
+    %_s4 = iconst i32 8
+    %_s5 = iconst i8 8
+    %_s6 = iconst i64 61
+    %_s7 = iconst i32 61
+    %_s8 = iconst i8 61
+    %p = dataptr 8
+    %r = call i64 write(1, %p, 61)
+    ret
+}
+
+fn w_v_rec() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 9
+    %_s4 = iconst i32 9
+    %_s5 = iconst i8 9
+    %_s6 = iconst i64 53
+    %_s7 = iconst i32 53
+    %_s8 = iconst i8 53
+    %p = dataptr 9
+    %r = call i64 write(1, %p, 53)
+    ret
+}
+
+fn w_v_fast() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 10
+    %_s4 = iconst i32 10
+    %_s5 = iconst i8 10
+    %_s6 = iconst i64 53
+    %_s7 = iconst i32 53
+    %_s8 = iconst i8 53
+    %p = dataptr 10
+    %r = call i64 write(1, %p, 53)
+    ret
+}
+
+fn w_v_mat() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 11
+    %_s4 = iconst i32 11
+    %_s5 = iconst i8 11
+    %_s6 = iconst i64 53
+    %_s7 = iconst i32 53
+    %_s8 = iconst i8 53
+    %p = dataptr 11
+    %r = call i64 write(1, %p, 53)
+    ret
+}
+
+fn w_v_cas() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 12
+    %_s4 = iconst i32 12
+    %_s5 = iconst i8 12
+    %_s6 = iconst i64 58
+    %_s7 = iconst i32 58
+    %_s8 = iconst i8 58
+    %p = dataptr 12
+    %r = call i64 write(1, %p, 58)
+    ret
+}
+
+fn w_v_sum() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 13
+    %_s4 = iconst i32 13
+    %_s5 = iconst i8 13
+    %_s6 = iconst i64 55
+    %_s7 = iconst i32 55
+    %_s8 = iconst i8 55
+    %p = dataptr 13
+    %r = call i64 write(1, %p, 55)
+    ret
+}
+
+fn w_v_gcd() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 14
+    %_s4 = iconst i32 14
+    %_s5 = iconst i8 14
+    %_s6 = iconst i64 60
+    %_s7 = iconst i32 60
+    %_s8 = iconst i8 60
+    %p = dataptr 14
+    %r = call i64 write(1, %p, 60)
+    ret
+}
+
+fn w_v_add() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 15
+    %_s4 = iconst i32 15
+    %_s5 = iconst i8 15
+    %_s6 = iconst i64 60
+    %_s7 = iconst i32 60
+    %_s8 = iconst i8 60
+    %p = dataptr 15
+    %r = call i64 write(1, %p, 60)
+    ret
+}
+
+fn w_slash() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 16
+    %_s4 = iconst i32 16
+    %_s5 = iconst i8 16
+    %p = dataptr 16
+    %r = call i64 write(1, %p, 1)
+    ret
+}
+
+fn w_agree() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 6
+    %_s4 = iconst i32 6
+    %_s5 = iconst i8 6
+    %_s6 = iconst i64 17
+    %_s7 = iconst i32 17
+    %_s8 = iconst i8 17
+    %p = dataptr 17
+    %r = call i64 write(1, %p, 6)
+    ret
+}
+
+fn w_sec_phi() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 18
+    %_s4 = iconst i32 18
+    %_s5 = iconst i8 18
+    %_s6 = iconst i64 52
+    %_s7 = iconst i32 52
+    %_s8 = iconst i8 52
+    %p = dataptr 18
+    %r = call i64 write(1, %p, 52)
+    ret
+}
+
+fn w_phi_pre() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 2
+    %_s4 = iconst i32 2
+    %_s5 = iconst i8 2
+    %_s6 = iconst i64 19
+    %_s7 = iconst i32 19
+    %_s8 = iconst i8 19
+    %p = dataptr 19
+    %r = call i64 write(1, %p, 2)
+    ret
+}
+
+fn w_phi_mid() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 8
+    %_s4 = iconst i32 8
+    %_s5 = iconst i8 8
+    %_s6 = iconst i64 20
+    %_s7 = iconst i32 20
+    %_s8 = iconst i8 20
+    %p = dataptr 20
+    %r = call i64 write(1, %p, 8)
+    ret
+}
+
+fn w_phi_post() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 4
+    %_s4 = iconst i32 4
+    %_s5 = iconst i8 4
+    %_s6 = iconst i64 21
+    %_s7 = iconst i32 21
+    %_s8 = iconst i8 21
+    %p = dataptr 21
+    %r = call i64 write(1, %p, 4)
+    ret
+}
+
+fn w_phi_true() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 22
+    %_s4 = iconst i32 22
+    %_s5 = iconst i8 22
+    %_s6 = iconst i64 63
+    %_s7 = iconst i32 63
+    %_s8 = iconst i8 63
+    %p = dataptr 22
+    %r = call i64 write(1, %p, 63)
+    ret
+}
+
+fn w_dot() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 23
+    %_s4 = iconst i32 23
+    %_s5 = iconst i8 23
+    %p = dataptr 23
+    %r = call i64 write(1, %p, 1)
+    ret
+}
+
+fn w_sec_ops() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 24
+    %_s4 = iconst i32 24
+    %_s5 = iconst i8 24
+    %_s6 = iconst i64 58
+    %_s7 = iconst i32 58
+    %_s8 = iconst i8 58
+    %p = dataptr 24
+    %r = call i64 write(1, %p, 58)
+    ret
+}
+
+fn w_ops_rec() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 18
+    %_s4 = iconst i32 18
+    %_s5 = iconst i8 18
+    %_s6 = iconst i64 25
+    %_s7 = iconst i32 25
+    %_s8 = iconst i8 25
+    %p = dataptr 25
+    %r = call i64 write(1, %p, 18)
+    ret
+}
+
+fn w_ops_rec2() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 26
+    %_s4 = iconst i32 26
+    %_s5 = iconst i8 26
+    %_s6 = iconst i64 38
+    %_s7 = iconst i32 38
+    %_s8 = iconst i8 38
+    %p = dataptr 26
+    %r = call i64 write(1, %p, 38)
+    ret
+}
+
+fn w_ops_iter() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 18
+    %_s4 = iconst i32 18
+    %_s5 = iconst i8 18
+    %_s6 = iconst i64 27
+    %_s7 = iconst i32 27
+    %_s8 = iconst i8 27
+    %p = dataptr 27
+    %r = call i64 write(1, %p, 18)
+    ret
+}
+
+fn w_ops_iter2() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 26
+    %_s4 = iconst i32 26
+    %_s5 = iconst i8 26
+    %_s6 = iconst i64 28
+    %_s7 = iconst i32 28
+    %_s8 = iconst i8 28
+    %p = dataptr 28
+    %r = call i64 write(1, %p, 26)
+    ret
+}
+
+fn w_ops_fast() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 18
+    %_s4 = iconst i32 18
+    %_s5 = iconst i8 18
+    %_s6 = iconst i64 29
+    %_s7 = iconst i32 29
+    %_s8 = iconst i8 29
+    %p = dataptr 29
+    %r = call i64 write(1, %p, 18)
+    ret
+}
+
+fn w_ops_fast2() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 24
+    %_s4 = iconst i32 24
+    %_s5 = iconst i8 24
+    %_s6 = iconst i64 30
+    %_s7 = iconst i32 30
+    %_s8 = iconst i8 30
+    %p = dataptr 30
+    %r = call i64 write(1, %p, 24)
+    ret
+}
+
+fn w_ops_fast3() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 18
+    %_s4 = iconst i32 18
+    %_s5 = iconst i8 18
+    %_s6 = iconst i64 31
+    %_s7 = iconst i32 31
+    %_s8 = iconst i8 31
+    %p = dataptr 31
+    %r = call i64 write(1, %p, 18)
+    ret
+}
+
+fn w_ops_mat() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 18
+    %_s4 = iconst i32 18
+    %_s5 = iconst i8 18
+    %_s6 = iconst i64 32
+    %_s7 = iconst i32 32
+    %_s8 = iconst i8 32
+    %p = dataptr 32
+    %r = call i64 write(1, %p, 18)
+    ret
+}
+
+fn w_ops_mat2() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 26
+    %_s4 = iconst i32 26
+    %_s5 = iconst i8 26
+    %_s6 = iconst i64 33
+    %_s7 = iconst i32 33
+    %_s8 = iconst i8 33
+    %p = dataptr 33
+    %r = call i64 write(1, %p, 26)
+    ret
+}
+
+fn w_ops_mat3() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 24
+    %_s4 = iconst i32 24
+    %_s5 = iconst i8 24
+    %_s6 = iconst i64 34
+    %_s7 = iconst i32 34
+    %_s8 = iconst i8 34
+    %p = dataptr 34
+    %r = call i64 write(1, %p, 24)
+    ret
+}
+
+fn w_sec_big() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 35
+    %_s4 = iconst i32 35
+    %_s5 = iconst i8 35
+    %_s6 = iconst i64 73
+    %_s7 = iconst i32 73
+    %_s8 = iconst i8 73
+    %p = dataptr 35
+    %r = call i64 write(1, %p, 73)
+    ret
+}
+
+fn w_big1_pre() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 11
+    %_s4 = iconst i32 11
+    %_s5 = iconst i8 11
+    %_s6 = iconst i64 36
+    %_s7 = iconst i32 36
+    %_s8 = iconst i8 36
+    %p = dataptr 36
+    %r = call i64 write(1, %p, 11)
+    ret
+}
+
+fn w_big2_pre() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 11
+    %_s4 = iconst i32 11
+    %_s5 = iconst i8 11
+    %_s6 = iconst i64 37
+    %_s7 = iconst i32 37
+    %_s8 = iconst i8 37
+    %p = dataptr 37
+    %r = call i64 write(1, %p, 11)
+    ret
+}
+
+fn w_digits() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 20
+    %_s4 = iconst i32 20
+    %_s5 = iconst i8 20
+    %_s6 = iconst i64 38
+    %_s7 = iconst i32 38
+    %_s8 = iconst i8 38
+    %p = dataptr 38
+    %r = call i64 write(1, %p, 20)
+    ret
+}
+
+fn w_digsum() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 20
+    %_s4 = iconst i32 20
+    %_s5 = iconst i8 20
+    %_s6 = iconst i64 39
+    %_s7 = iconst i32 39
+    %_s8 = iconst i8 39
+    %p = dataptr 39
+    %r = call i64 write(1, %p, 20)
+    ret
+}
+
+fn w_last9() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 20
+    %_s4 = iconst i32 20
+    %_s5 = iconst i8 20
+    %_s6 = iconst i64 40
+    %_s7 = iconst i32 40
+    %_s8 = iconst i8 40
+    %p = dataptr 40
+    %r = call i64 write(1, %p, 20)
+    ret
+}
+
+fn w_first() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 20
+    %_s4 = iconst i32 20
+    %_s5 = iconst i8 20
+    %_s6 = iconst i64 41
+    %_s7 = iconst i32 41
+    %_s8 = iconst i8 41
+    %p = dataptr 41
+    %r = call i64 write(1, %p, 20)
+    ret
+}
+
+fn w_dots() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 3
+    %_s4 = iconst i32 3
+    %_s5 = iconst i8 3
+    %_s6 = iconst i64 42
+    %_s7 = iconst i32 42
+    %_s8 = iconst i8 42
+    %p = dataptr 42
+    %r = call i64 write(1, %p, 3)
+    ret
+}
+
+fn w_verdict_ok() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 43
+    %_s4 = iconst i32 43
+    %_s5 = iconst i8 43
+    %_s6 = iconst i64 96
+    %_s7 = iconst i32 96
+    %_s8 = iconst i8 96
+    %p = dataptr 43
+    %r = call i64 write(1, %p, 96)
+    ret
+}
+
+fn w_verdict_bad() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 44
+    %_s4 = iconst i32 44
+    %_s5 = iconst i8 44
+    %_s6 = iconst i64 95
+    %_s7 = iconst i32 95
+    %_s8 = iconst i8 95
+    %p = dataptr 44
+    %r = call i64 write(1, %p, 95)
+    ret
+}
+
+fn w_verdict2() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 17
+    %_s4 = iconst i32 17
+    %_s5 = iconst i8 17
+    %_s6 = iconst i64 45
+    %_s7 = iconst i32 45
+    %_s8 = iconst i8 45
+    %p = dataptr 45
+    %r = call i64 write(1, %p, 17)
+    ret
+}
+
+fn w_verdict3() -> void {
+  entry():
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 46
+    %_s4 = iconst i32 46
+    %_s5 = iconst i8 46
+    %_s6 = iconst i64 73
+    %_s7 = iconst i32 73
+    %_s8 = iconst i8 73
+    %p = dataptr 46
+    %r = call i64 write(1, %p, 73)
+    ret
+}
+
+
+fn fib_rec(i64) -> i64 {
+  entry(n: i64):
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 2
+    %_s4 = iconst i32 2
+    %_s5 = iconst i8 2
+    %c = icmp.slt i64 n, 2
+    condbr %c, base(n), rec(n)
+  base(n: i64):
+    ret n
+  rec(n: i64):
+    %n1 = sub i64 n, 1
+    %a = call i64 fib_rec(%n1)
+    %n2 = sub i64 n, 2
+    %b = call i64 fib_rec(%n2)
+    %s = add i64 %a, %b
+    ret %s
+}
+
+fn fib_iter(i64) -> i64 {
+  entry(n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    br loop(0, 0, 1, n)
+  loop(i: i64, a: i64, b: i64, n: i64):
+    %done = icmp.sge i64 i, n
+    condbr %done, fin(a), body(i, a, b, n)
+  body(i: i64, a: i64, b: i64, n: i64):
+    %nx = add i64 a, b
+    %i2 = add i64 i, 1
+    br loop(%i2, b, %nx, n)
+  fin(a: i64):
+    ret a
+}
+
+fn fib_iter_ops(i64) -> i64 {
+  entry(n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    br loop(0, 0, 1, n, 0)
+  loop(i: i64, a: i64, b: i64, n: i64, ops: i64):
+    %done = icmp.sge i64 i, n
+    condbr %done, fin(ops), body(i, a, b, n, ops)
+  body(i: i64, a: i64, b: i64, n: i64, ops: i64):
+    %nx = add i64 a, b
+    %i2 = add i64 i, 1
+    %o2 = add i64 ops, 1
+    br loop(%i2, b, %nx, n, %o2)
+  fin(ops: i64):
+    ret ops
+}
+
+; fast doubling core: (F(n), F(n+1)) -> out[0..1]; per-depth scratch pairs.
+fn fib_pair(i64, i64, ptr, ptr, ptr) -> void {
+  entry(n: i64, d: i64, out: ptr, scr: ptr, cnt: ptr):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 2
+    %_s7 = iconst i32 2
+    %_s8 = iconst i8 2
+    %_s9 = iconst i64 3
+    %_s10 = iconst i32 3
+    %_s11 = iconst i8 3
+    %z = icmp.eq i64 n, 0
+    condbr %z, base(out), rec(n, d, out, scr, cnt)
+  base(out: ptr):
+    %p0 = gep i64 out, 0
+    store i64 %p0, 0
+    %p1 = gep i64 out, 1
+    store i64 %p1, 1
+    ret
+  rec(n: i64, d: i64, out: ptr, scr: ptr, cnt: ptr):
+    %k = sdiv i64 n, 2
+    %d1 = add i64 d, 1
+    %s0 = mul i64 d, 2
+    %sp = gep i64 scr, %s0
+    call void fib_pair(%k, %d1, %sp, scr, cnt)
+    %a = load i64, %sp
+    %s1 = add i64 %s0, 1
+    %sq = gep i64 scr, %s1
+    %b = load i64, %sq
+    %cv = load i64, %cnt
+    %cv2 = add i64 %cv, 3
+    store i64 %cnt, %cv2
+    %tb = mul i64 %b, 2
+    %tba = sub i64 %tb, %a
+    %c = mul i64 %a, %tba
+    %aa = mul i64 %a, %a
+    %bb = mul i64 %b, %b
+    %dd = add i64 %aa, %bb
+    %odd = and i64 n, 1
+    %iso = icmp.eq i64 %odd, 1
+    condbr %iso, oddout(%c, %dd, out), evenout(%c, %dd, out)
+  evenout(c: i64, dd: i64, out: ptr):
+    %p0 = gep i64 out, 0
+    store i64 %p0, %c
+    %p1 = gep i64 out, 1
+    store i64 %p1, %dd
+    ret
+  oddout(c: i64, dd: i64, out: ptr):
+    %e = add i64 %c, %dd
+    %p0 = gep i64 out, 0
+    store i64 %p0, %dd
+    %p1 = gep i64 out, 1
+    store i64 %p1, %e
+    ret
+}
+
+fn fib_fast(i64) -> i64 {
+  entry(n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 8
+    %_s4 = iconst i32 8
+    %_s5 = iconst i8 8
+    %_s6 = iconst i64 16
+    %_s7 = iconst i32 16
+    %_s8 = iconst i8 16
+    %_s9 = iconst i64 4096
+    %_s10 = iconst i32 4096
+    %_s11 = iconst i8 4096
+    %out = call ptr malloc(16)
+    %scr = call ptr malloc(4096)
+    %cnt = call ptr malloc(8)
+    store i64 %cnt, 0
+    call void fib_pair(n, 0, %out, %scr, %cnt)
+    %p0 = gep i64 %out, 0
+    %v = load i64, %p0
+    ret %v
+}
+
+fn mat_mul(ptr, ptr, ptr) -> void {
+  entry(r: ptr, x: ptr, y: ptr):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 2
+    %_s7 = iconst i32 2
+    %_s8 = iconst i8 2
+    %_s9 = iconst i64 3
+    %_s10 = iconst i32 3
+    %_s11 = iconst i8 3
+    %x0p = gep i64 x, 0
+    %x0 = load i64, %x0p
+    %x1p = gep i64 x, 1
+    %x1 = load i64, %x1p
+    %x2p = gep i64 x, 2
+    %x2 = load i64, %x2p
+    %x3p = gep i64 x, 3
+    %x3 = load i64, %x3p
+    %y0p = gep i64 y, 0
+    %y0 = load i64, %y0p
+    %y1p = gep i64 y, 1
+    %y1 = load i64, %y1p
+    %y2p = gep i64 y, 2
+    %y2 = load i64, %y2p
+    %y3p = gep i64 y, 3
+    %y3 = load i64, %y3p
+    %a0 = mul i64 %x0, %y0
+    %a1 = mul i64 %x1, %y2
+    %r0 = add i64 %a0, %a1
+    %b0 = mul i64 %x0, %y1
+    %b1 = mul i64 %x1, %y3
+    %r1 = add i64 %b0, %b1
+    %c0 = mul i64 %x2, %y0
+    %c1 = mul i64 %x3, %y2
+    %r2 = add i64 %c0, %c1
+    %d0 = mul i64 %x2, %y1
+    %d1 = mul i64 %x3, %y3
+    %r3 = add i64 %d0, %d1
+    %q0 = gep i64 r, 0
+    store i64 %q0, %r0
+    %q1 = gep i64 r, 1
+    store i64 %q1, %r1
+    %q2 = gep i64 r, 2
+    store i64 %q2, %r2
+    %q3 = gep i64 r, 3
+    store i64 %q3, %r3
+    ret
+}
+
+fn mat_copy(ptr, ptr) -> void {
+  entry(dst: ptr, src: ptr):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 4
+    %_s7 = iconst i32 4
+    %_s8 = iconst i8 4
+    br loop(0, dst, src)
+  loop(i: i64, dst: ptr, src: ptr):
+    %done = icmp.sge i64 i, 4
+    condbr %done, fin(), body(i, dst, src)
+  body(i: i64, dst: ptr, src: ptr):
+    %sp = gep i64 src, i
+    %v = load i64, %sp
+    %dp = gep i64 dst, i
+    store i64 %dp, %v
+    %i2 = add i64 i, 1
+    br loop(%i2, dst, src)
+  fin():
+    ret
+}
+
+fn fib_matrix_c(i64, ptr) -> i64 {
+  entry(n: i64, cnt: ptr):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 2
+    %_s7 = iconst i32 2
+    %_s8 = iconst i8 2
+    %_s9 = iconst i64 3
+    %_s10 = iconst i32 3
+    %_s11 = iconst i8 3
+    %_s12 = iconst i64 32
+    %_s13 = iconst i32 32
+    %_s14 = iconst i8 32
+    %res = call ptr malloc(32)
+    %bas = call ptr malloc(32)
+    %tmp = call ptr malloc(32)
+    %r0 = gep i64 %res, 0
+    store i64 %r0, 1
+    %r1 = gep i64 %res, 1
+    store i64 %r1, 0
+    %r2 = gep i64 %res, 2
+    store i64 %r2, 0
+    %r3 = gep i64 %res, 3
+    store i64 %r3, 1
+    %b0 = gep i64 %bas, 0
+    store i64 %b0, 1
+    %b1 = gep i64 %bas, 1
+    store i64 %b1, 1
+    %b2 = gep i64 %bas, 2
+    store i64 %b2, 1
+    %b3 = gep i64 %bas, 3
+    store i64 %b3, 0
+    br loop(n, %res, %bas, %tmp, cnt)
+  loop(e: i64, res: ptr, bas: ptr, tmp: ptr, cnt: ptr):
+    %done = icmp.sle i64 e, 0
+    condbr %done, fin(res), step(e, res, bas, tmp, cnt)
+  step(e: i64, res: ptr, bas: ptr, tmp: ptr, cnt: ptr):
+    %odd = and i64 e, 1
+    %iso = icmp.eq i64 %odd, 1
+    condbr %iso, apply(e, res, bas, tmp, cnt), square(e, res, bas, tmp, cnt)
+  apply(e: i64, res: ptr, bas: ptr, tmp: ptr, cnt: ptr):
+    call void mat_mul(tmp, res, bas)
+    call void mat_copy(res, tmp)
+    %cv = load i64, %cnt
+    %cv2 = add i64 %cv, 1
+    store i64 %cnt, %cv2
+    br square(e, res, bas, tmp, cnt)
+  square(e: i64, res: ptr, bas: ptr, tmp: ptr, cnt: ptr):
+    call void mat_mul(tmp, bas, bas)
+    call void mat_copy(bas, tmp)
+    %cv = load i64, %cnt
+    %cv2 = add i64 %cv, 1
+    store i64 %cnt, %cv2
+    %e2 = lshr i64 e, 1
+    br loop(%e2, res, bas, tmp, cnt)
+  fin(res: ptr):
+    %p = gep i64 res, 1
+    %v = load i64, %p
+    ret %v
+}
+
+fn fib_matrix(i64) -> i64 {
+  entry(n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 8
+    %_s4 = iconst i32 8
+    %_s5 = iconst i8 8
+    %cnt = call ptr malloc(8)
+    store i64 %cnt, 0
+    %v = call i64 fib_matrix_c(n, %cnt)
+    ret %v
+}
+
+fn gcd_i64(i64, i64) -> i64 {
+  entry(a: i64, b: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    br loop(a, b)
+  loop(a: i64, b: i64):
+    %z = icmp.eq i64 b, 0
+    condbr %z, fin(a), body(a, b)
+  body(a: i64, b: i64):
+    %r = srem i64 a, b
+    br loop(b, %r)
+  fin(a: i64):
+    ret a
+}
+
+; instrumented recursion: returns call count; F(n) stored to vals[d].
+fn fib_calls(i64, i64, ptr) -> i64 {
+  entry(n: i64, d: i64, vals: ptr):
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 2
+    %_s4 = iconst i32 2
+    %_s5 = iconst i8 2
+    %c = icmp.slt i64 n, 2
+    condbr %c, base(n, d, vals), rec(n, d, vals)
+  base(n: i64, d: i64, vals: ptr):
+    %p = gep i64 vals, d
+    store i64 %p, n
+    ret 1
+  rec(n: i64, d: i64, vals: ptr):
+    %d1 = add i64 d, 1
+    %n1 = sub i64 n, 1
+    %cl = call i64 fib_calls(%n1, %d1, vals)
+    %pl = gep i64 vals, %d1
+    %vl = load i64, %pl
+    %n2 = sub i64 n, 2
+    %cr = call i64 fib_calls(%n2, %d1, vals)
+    %pr = gep i64 vals, %d1
+    %vr = load i64, %pr
+    %v = add i64 %vl, %vr
+    %p = gep i64 vals, d
+    store i64 %p, %v
+    %t0 = add i64 %cl, %cr
+    %t1 = add i64 %t0, 1
+    ret %t1
+}
+
+fn bitlen(i64) -> i64 {
+  entry(x: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    br loop(x, 0)
+  loop(x: i64, c: i64):
+    %z = icmp.sle i64 x, 0
+    condbr %z, fin(c), body(x, c)
+  body(x: i64, c: i64):
+    %x2 = lshr i64 x, 1
+    %c2 = add i64 c, 1
+    br loop(%x2, %c2)
+  fin(c: i64):
+    ret c
+}
+
+
+fn print_u64(i64) -> void {
+  entry(x: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 10
+    %_s7 = iconst i32 10
+    %_s8 = iconst i8 10
+    %_s9 = iconst i64 24
+    %_s10 = iconst i32 24
+    %_s11 = iconst i8 24
+    %_s12 = iconst i64 32
+    %_s13 = iconst i32 32
+    %_s14 = iconst i8 32
+    %_s15 = iconst i64 48
+    %_s16 = iconst i32 48
+    %_s17 = iconst i8 48
+    %buf = call ptr malloc(32)
+    %z = icmp.eq i64 x, 0
+    condbr %z, zero(%buf), loop(24, x, %buf)
+  zero(buf: ptr):
+    %p = gep i8 buf, 0
+    store i8 %p, 48
+    %w = call i64 write(1, buf, 1)
+    ret
+  loop(pos: i64, x: i64, buf: ptr):
+    %done = icmp.sle i64 x, 0
+    condbr %done, dump(pos, buf), body(pos, x, buf)
+  body(pos: i64, x: i64, buf: ptr):
+    %d = urem i64 x, 10
+    %ch = add i64 %d, 48
+    %ch8 = trunc i8 %ch
+    %p2 = sub i64 pos, 1
+    %pp = gep i8 buf, %p2
+    store i8 %pp, %ch8
+    %x2 = udiv i64 x, 10
+    br loop(%p2, %x2, buf)
+  dump(pos: i64, buf: ptr):
+    %pp = gep i8 buf, pos
+    %len = sub i64 24, pos
+    %w = call i64 write(1, %pp, %len)
+    ret
+}
+
+fn print_limb9(i64) -> void {
+  entry(x: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 8
+    %_s7 = iconst i32 8
+    %_s8 = iconst i8 8
+    %_s9 = iconst i64 9
+    %_s10 = iconst i32 9
+    %_s11 = iconst i8 9
+    %_s12 = iconst i64 10
+    %_s13 = iconst i32 10
+    %_s14 = iconst i8 10
+    %_s15 = iconst i64 16
+    %_s16 = iconst i32 16
+    %_s17 = iconst i8 16
+    %_s18 = iconst i64 48
+    %_s19 = iconst i32 48
+    %_s20 = iconst i8 48
+    %buf = call ptr malloc(16)
+    br loop(8, x, %buf)
+  loop(pos: i64, x: i64, buf: ptr):
+    %neg = icmp.slt i64 pos, 0
+    condbr %neg, dump(buf), body(pos, x, buf)
+  body(pos: i64, x: i64, buf: ptr):
+    %d = urem i64 x, 10
+    %ch = add i64 %d, 48
+    %ch8 = trunc i8 %ch
+    %pp = gep i8 buf, pos
+    store i8 %pp, %ch8
+    %x2 = udiv i64 x, 10
+    %p2 = sub i64 pos, 1
+    br loop(%p2, %x2, buf)
+  dump(buf: ptr):
+    %w = call i64 write(1, buf, 9)
+    ret
+}
+
+fn print_phi(i64) -> void {
+  entry(n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 15
+    %_s7 = iconst i32 15
+    %_s8 = iconst i8 15
+    %_s9 = fconst f64 10.0
+    %a1 = add i64 n, 1
+    %hi = call i64 fib_iter(%a1)
+    %lo = call i64 fib_iter(n)
+    %hf = sitofp f64 %hi
+    %lf = sitofp f64 %lo
+    %r = fdiv f64 %hf, %lf
+    %ip = fptosi i64 %r
+    call void print_u64(%ip)
+    %ipf = sitofp f64 %ip
+    %frac = fsub f64 %r, %ipf
+
+    call void w_dot()
+    br loop(0, %frac)
+  loop(done: i64, frac: f64):
+    %fin = icmp.sge i64 done, 15
+    condbr %fin, fin(), body(done, frac)
+  body(done: i64, frac: f64):
+    %sc = fmul f64 frac, 10.0
+    %dg = fptosi i64 %sc
+    call void print_u64(%dg)
+    %dgf = sitofp f64 %dg
+    %nf = fsub f64 %sc, %dgf
+    %d2 = add i64 done, 1
+    br loop(%d2, %nf)
+  fin():
+    ret
+}
+
+
+fn zero_buf(ptr, i64) -> void {
+  entry(buf: ptr, slots: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    br loop(0, buf, slots)
+  loop(i: i64, buf: ptr, slots: i64):
+    %done = icmp.sge i64 i, slots
+    condbr %done, fin(), body(i, buf, slots)
+  body(i: i64, buf: ptr, slots: i64):
+    %p = gep i64 buf, i
+    store i64 %p, 0
+    %i2 = add i64 i, 1
+    br loop(%i2, buf, slots)
+  fin():
+    ret
+}
+
+fn copy_buf(ptr, ptr, i64) -> void {
+  entry(dst: ptr, src: ptr, n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    br loop(0, dst, src, n)
+  loop(i: i64, dst: ptr, src: ptr, n: i64):
+    %done = icmp.sge i64 i, n
+    condbr %done, fin(), body(i, dst, src, n)
+  body(i: i64, dst: ptr, src: ptr, n: i64):
+    %sp = gep i64 src, i
+    %v = load i64, %sp
+    %dp = gep i64 dst, i
+    store i64 %dp, %v
+    %i2 = add i64 i, 1
+    br loop(%i2, dst, src, n)
+  fin():
+    ret
+}
+
+; dst = a + b in base 10^9; returns limb count; writes a 0 sentinel at dst[n].
+fn big_add(ptr, ptr, i64, ptr, i64) -> i64 {
+  entry(dst: ptr, a: ptr, na: i64, b: ptr, nb: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 1000000000
+    %_s7 = iconst i32 1000000000
+    %_s8 = iconst i8 1000000000
+    %gt = icmp.sgt i64 nb, na
+    %mx = select i64 %gt, nb, na
+    br loop(0, 0, %mx, dst, a, na, b, nb)
+  loop(i: i64, carry: i64, mx: i64, dst: ptr, a: ptr, na: i64, b: ptr, nb: i64):
+    %done = icmp.sge i64 i, mx
+    condbr %done, fin(i, carry, dst), body(i, carry, mx, dst, a, na, b, nb)
+  body(i: i64, carry: i64, mx: i64, dst: ptr, a: ptr, na: i64, b: ptr, nb: i64):
+    %ap = gep i64 a, i
+    %av0 = load i64, %ap
+    %ina = icmp.slt i64 i, na
+    %av = select i64 %ina, %av0, 0
+    %bp = gep i64 b, i
+    %bv0 = load i64, %bp
+    %inb = icmp.slt i64 i, nb
+    %bv = select i64 %inb, %bv0, 0
+    %s0 = add i64 %av, %bv
+    %s = add i64 %s0, carry
+    %ge = icmp.sge i64 %s, 1000000000
+    %df = sub i64 %s, 1000000000
+    %val = select i64 %ge, %df, %s
+    %nc = select i64 %ge, 1, 0
+    %dp = gep i64 dst, i
+    store i64 %dp, %val
+    %i2 = add i64 i, 1
+    br loop(%i2, %nc, mx, dst, a, na, b, nb)
+  fin(i: i64, carry: i64, dst: ptr):
+    %p = gep i64 dst, i
+    store i64 %p, carry
+    %r = add i64 i, carry
+    ret %r
+}
+
+; F(target) into res; returns limb count. Buffer roles are FIXED (no
+; block-arg rotation: a cyclic permutation of block arguments is not a
+; safe idiom). Each body advances three steps in place: C=A+B, A=B+C,
+; B=A+C - big_add is index-wise, so dst may alias one operand.
+fn big_fib(i64, ptr) -> i64 {
+  entry(target: i64, res: ptr):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 3
+    %_s7 = iconst i32 3
+    %_s8 = iconst i8 3
+    %_s9 = iconst i64 1024
+    %_s10 = iconst i32 1024
+    %_s11 = iconst i8 1024
+    %_s12 = iconst i64 8192
+    %_s13 = iconst i32 8192
+    %_s14 = iconst i8 8192
+    %a = call ptr malloc(8192)
+    %b = call ptr malloc(8192)
+    %c = call ptr malloc(8192)
+    call void zero_buf(%a, 1024)
+    call void zero_buf(%b, 1024)
+    call void zero_buf(%c, 1024)
+    %pa = gep i64 %a, 0
+    store i64 %pa, 0
+    %pb = gep i64 %b, 0
+    store i64 %pb, 1
+    br loop(0, target, %a, 1, %b, 1, %c, 0, res)
+  loop(k: i64, target: i64, pa: ptr, na: i64, pb: ptr, nb: i64, pc: ptr, nc: i64, res: ptr):
+    %k3 = add i64 k, 3
+    %done = icmp.sgt i64 %k3, target
+    condbr %done, tail(k, target, pa, na, pb, nb, pc, nc, res), body(k, target, pa, na, pb, nb, pc, nc, res)
+  body(k: i64, target: i64, pa: ptr, na: i64, pb: ptr, nb: i64, pc: ptr, nc: i64, res: ptr):
+    %nc1 = call i64 big_add(pc, pa, na, pb, nb)
+    %na2 = call i64 big_add(pa, pb, nb, pc, %nc1)
+    %nb2 = call i64 big_add(pb, pa, %na2, pc, %nc1)
+    %k2 = add i64 k, 3
+    br loop(%k2, target, pa, %na2, pb, %nb2, pc, %nc1, res)
+  tail(k: i64, target: i64, pa: ptr, na: i64, pb: ptr, nb: i64, pc: ptr, nc: i64, res: ptr):
+    %r = sub i64 target, k
+    %is0 = icmp.eq i64 %r, 0
+    condbr %is0, fina(pa, na, res), tail1(%r, pa, na, pb, nb, pc, nc, res)
+  tail1(r: i64, pa: ptr, na: i64, pb: ptr, nb: i64, pc: ptr, nc: i64, res: ptr):
+    %is1 = icmp.eq i64 r, 1
+    condbr %is1, finb(pb, nb, res), finc(pa, na, pb, nb, pc, res)
+  fina(pa: ptr, na: i64, res: ptr):
+    call void copy_buf(res, pa, na)
+    ret na
+  finb(pb: ptr, nb: i64, res: ptr):
+    call void copy_buf(res, pb, nb)
+    ret nb
+  finc(pa: ptr, na: i64, pb: ptr, nb: i64, pc: ptr, res: ptr):
+    %nc2 = call i64 big_add(pc, pa, na, pb, nb)
+    call void copy_buf(res, pc, %nc2)
+    ret %nc2
+}
+
+fn print_big(ptr, i64) -> void {
+  entry(buf: ptr, n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %t = sub i64 n, 1
+    %tp = gep i64 buf, %t
+    %tv = load i64, %tp
+    call void print_u64(%tv)
+    %s = sub i64 %t, 1
+    br loop(%s, buf)
+  loop(i: i64, buf: ptr):
+    %neg = icmp.slt i64 i, 0
+    condbr %neg, fin(), body(i, buf)
+  body(i: i64, buf: ptr):
+    %p = gep i64 buf, i
+    %v = load i64, %p
+    call void print_limb9(%v)
+    %i2 = sub i64 i, 1
+    br loop(%i2, buf)
+  fin():
+    ret
+}
+
+fn top_digits(i64) -> i64 {
+  entry(x: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 10
+    %_s7 = iconst i32 10
+    %_s8 = iconst i8 10
+    br loop(x, 0)
+  loop(x: i64, c: i64):
+    %z = icmp.sle i64 x, 0
+    condbr %z, fin(c), body(x, c)
+  body(x: i64, c: i64):
+    %x2 = udiv i64 x, 10
+    %c2 = add i64 c, 1
+    br loop(%x2, %c2)
+  fin(c: i64):
+    %z = icmp.eq i64 c, 0
+    %r = select i64 %z, 1, c
+    ret %r
+}
+
+fn big_digit_count(ptr, i64) -> i64 {
+  entry(buf: ptr, n: i64):
+    %_s0 = iconst i64 1
+    %_s1 = iconst i32 1
+    %_s2 = iconst i8 1
+    %_s3 = iconst i64 9
+    %_s4 = iconst i32 9
+    %_s5 = iconst i8 9
+    %t = sub i64 n, 1
+    %tp = gep i64 buf, %t
+    %tv = load i64, %tp
+    %td = call i64 top_digits(%tv)
+    %m = mul i64 %t, 9
+    %r = add i64 %m, %td
+    ret %r
+}
+
+fn limb_dsum(i64) -> i64 {
+  entry(x: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 9
+    %_s7 = iconst i32 9
+    %_s8 = iconst i8 9
+    %_s9 = iconst i64 10
+    %_s10 = iconst i32 10
+    %_s11 = iconst i8 10
+    br loop(0, x, 0)
+  loop(i: i64, x: i64, s: i64):
+    %done = icmp.sge i64 i, 9
+    condbr %done, fin(s), body(i, x, s)
+  body(i: i64, x: i64, s: i64):
+    %d = urem i64 x, 10
+    %s2 = add i64 s, %d
+    %x2 = udiv i64 x, 10
+    %i2 = add i64 i, 1
+    br loop(%i2, %x2, %s2)
+  fin(s: i64):
+    ret s
+}
+
+fn big_digit_sum(ptr, i64) -> i64 {
+  entry(buf: ptr, n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    br loop(0, buf, n, 0)
+  loop(i: i64, buf: ptr, n: i64, s: i64):
+    %done = icmp.sge i64 i, n
+    condbr %done, fin(s), body(i, buf, n, s)
+  body(i: i64, buf: ptr, n: i64, s: i64):
+    %p = gep i64 buf, i
+    %v = load i64, %p
+    %d = call i64 limb_dsum(%v)
+    %s2 = add i64 s, %d
+    %i2 = add i64 i, 1
+    br loop(%i2, buf, n, %s2)
+  fin(s: i64):
+    ret s
+}
+
+fn v_rec() -> i64 {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 28
+    %_s7 = iconst i32 28
+    %_s8 = iconst i8 28
+    %_s9 = iconst i64 10000
+    %_s10 = iconst i32 10000
+    %_s11 = iconst i8 10000
+    br loop(0, 0, 0)
+  loop(n: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 28
+    condbr %done, report(checks, fails), body(n, checks, fails)
+  body(n: i64, checks: i64, fails: i64):
+    %a = call i64 fib_rec(n)
+    %b = call i64 fib_iter(n)
+    %eq = icmp.eq i64 %a, %b
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br loop(%n2, %c2, %f2)
+  report(checks: i64, fails: i64):
+    call void w_v_rec()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+fn v_fast() -> i64 {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 90
+    %_s7 = iconst i32 90
+    %_s8 = iconst i8 90
+    %_s9 = iconst i64 10000
+    %_s10 = iconst i32 10000
+    %_s11 = iconst i8 10000
+    br loop(0, 0, 0)
+  loop(n: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 90
+    condbr %done, report(checks, fails), body(n, checks, fails)
+  body(n: i64, checks: i64, fails: i64):
+    %a = call i64 fib_fast(n)
+    %b = call i64 fib_iter(n)
+    %eq = icmp.eq i64 %a, %b
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br loop(%n2, %c2, %f2)
+  report(checks: i64, fails: i64):
+    call void w_v_fast()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+fn v_mat() -> i64 {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 90
+    %_s7 = iconst i32 90
+    %_s8 = iconst i8 90
+    %_s9 = iconst i64 10000
+    %_s10 = iconst i32 10000
+    %_s11 = iconst i8 10000
+    br loop(0, 0, 0)
+  loop(n: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 90
+    condbr %done, report(checks, fails), body(n, checks, fails)
+  body(n: i64, checks: i64, fails: i64):
+    %a = call i64 fib_matrix(n)
+    %b = call i64 fib_iter(n)
+    %eq = icmp.eq i64 %a, %b
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br loop(%n2, %c2, %f2)
+  report(checks: i64, fails: i64):
+    call void w_v_mat()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+fn v_cas() -> i64 {
+  entry():
+    %_s0 = iconst i64 -1
+    %_s1 = iconst i32 -1
+    %_s2 = iconst i8 -1
+    %_s3 = iconst i64 0
+    %_s4 = iconst i32 0
+    %_s5 = iconst i8 0
+    %_s6 = iconst i64 1
+    %_s7 = iconst i32 1
+    %_s8 = iconst i8 1
+    %_s9 = iconst i64 46
+    %_s10 = iconst i32 46
+    %_s11 = iconst i8 46
+    %_s12 = iconst i64 10000
+    %_s13 = iconst i32 10000
+    %_s14 = iconst i8 10000
+    br loop(1, 0, 0)
+  loop(n: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 46
+    condbr %done, report(checks, fails), body(n, checks, fails)
+  body(n: i64, checks: i64, fails: i64):
+    %nm = sub i64 n, 1
+    %np = add i64 n, 1
+    %fm = call i64 fib_iter(%nm)
+    %fp = call i64 fib_iter(%np)
+    %fn = call i64 fib_iter(n)
+    %p0 = mul i64 %fm, %fp
+    %p1 = mul i64 %fn, %fn
+    %lhs = sub i64 %p0, %p1
+    %odd = and i64 n, 1
+    %iso = icmp.eq i64 %odd, 1
+    %exp = select i64 %iso, -1, 1
+    %eq = icmp.eq i64 %lhs, %exp
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br loop(%n2, %c2, %f2)
+  report(checks: i64, fails: i64):
+    call void w_v_cas()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+fn v_sum() -> i64 {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 2
+    %_s7 = iconst i32 2
+    %_s8 = iconst i8 2
+    %_s9 = iconst i64 88
+    %_s10 = iconst i32 88
+    %_s11 = iconst i8 88
+    %_s12 = iconst i64 10000
+    %_s13 = iconst i32 10000
+    %_s14 = iconst i8 10000
+    br loop(0, 0, 0, 0)
+  loop(n: i64, cum: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 88
+    condbr %done, report(checks, fails), body(n, cum, checks, fails)
+  body(n: i64, cum: i64, checks: i64, fails: i64):
+    %f = call i64 fib_iter(n)
+    %c2v = add i64 cum, %f
+    %np = add i64 n, 2
+    %rhs0 = call i64 fib_iter(%np)
+    %rhs = sub i64 %rhs0, 1
+    %eq = icmp.eq i64 %c2v, %rhs
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br loop(%n2, %c2v, %c2, %f2)
+  report(checks: i64, fails: i64):
+    call void w_v_sum()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+fn v_gcd() -> i64 {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 24
+    %_s7 = iconst i32 24
+    %_s8 = iconst i8 24
+    %_s9 = iconst i64 10000
+    %_s10 = iconst i32 10000
+    %_s11 = iconst i8 10000
+    br oloop(1, 0, 0)
+  oloop(m: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 m, 24
+    condbr %done, report(checks, fails), obody(m, checks, fails)
+  obody(m: i64, checks: i64, fails: i64):
+    br iloop(m, 1, checks, fails)
+  iloop(m: i64, n: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 24
+    condbr %done, idone(m, checks, fails), ibody(m, n, checks, fails)
+  ibody(m: i64, n: i64, checks: i64, fails: i64):
+    %fm = call i64 fib_iter(m)
+    %fn = call i64 fib_iter(n)
+    %lhs = call i64 gcd_i64(%fm, %fn)
+    %g = call i64 gcd_i64(m, n)
+    %rhs = call i64 fib_iter(%g)
+    %eq = icmp.eq i64 %lhs, %rhs
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br iloop(m, %n2, %c2, %f2)
+  idone(m: i64, checks: i64, fails: i64):
+    %m2 = add i64 m, 1
+    br oloop(%m2, checks, fails)
+  report(checks: i64, fails: i64):
+    call void w_v_gcd()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+fn v_add() -> i64 {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 2
+    %_s7 = iconst i32 2
+    %_s8 = iconst i8 2
+    %_s9 = iconst i64 30
+    %_s10 = iconst i32 30
+    %_s11 = iconst i8 30
+    %_s12 = iconst i64 10000
+    %_s13 = iconst i32 10000
+    %_s14 = iconst i8 10000
+    br oloop(2, 0, 0)
+  oloop(m: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 m, 30
+    condbr %done, report(checks, fails), obody(m, checks, fails)
+  obody(m: i64, checks: i64, fails: i64):
+    br iloop(m, 2, checks, fails)
+  iloop(m: i64, n: i64, checks: i64, fails: i64):
+    %done = icmp.sgt i64 n, 30
+    condbr %done, idone(m, checks, fails), ibody(m, n, checks, fails)
+  ibody(m: i64, n: i64, checks: i64, fails: i64):
+    %mn = add i64 m, n
+    %lhs = call i64 fib_iter(%mn)
+    %fm = call i64 fib_iter(m)
+    %np = add i64 n, 1
+    %fnp = call i64 fib_iter(%np)
+    %t0 = mul i64 %fm, %fnp
+    %mm = sub i64 m, 1
+    %fmm = call i64 fib_iter(%mm)
+    %fn = call i64 fib_iter(n)
+    %t1 = mul i64 %fmm, %fn
+    %rhs = add i64 %t0, %t1
+    %eq = icmp.eq i64 %lhs, %rhs
+    %inc = select i64 %eq, 0, 1
+    %f2 = add i64 fails, %inc
+    %c2 = add i64 checks, 1
+    %n2 = add i64 n, 1
+    br iloop(m, %n2, %c2, %f2)
+  idone(m: i64, checks: i64, fails: i64):
+    %m2 = add i64 m, 1
+    br oloop(%m2, checks, fails)
+  report(checks: i64, fails: i64):
+    call void w_v_add()
+    %ok = sub i64 checks, fails
+    call void print_u64(%ok)
+    call void w_slash()
+    call void print_u64(checks)
+    call void w_agree()
+    call void w_nl()
+    %pk = mul i64 checks, 10000
+    %r = add i64 %pk, fails
+    ret %r
+}
+
+
+fn sec_table() -> void {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %_s6 = iconst i64 92
+    %_s7 = iconst i32 92
+    %_s8 = iconst i8 92
+    br loop(0)
+  loop(n: i64):
+    %done = icmp.sgt i64 n, 92
+    condbr %done, fin(), body(n)
+  body(n: i64):
+
+    call void w_fopen()
+    call void print_u64(n)
+
+    call void w_eq()
+    %v = call i64 fib_iter(n)
+    call void print_u64(%v)
+
+    call void w_nl()
+    %n2 = add i64 n, 1
+    br loop(%n2)
+  fin():
+    ret
+}
+
+fn phi_row(i64) -> void {
+  entry(n: i64):
+
+    call void w_phi_pre()
+    call void print_u64(n)
+
+    call void w_phi_mid()
+    call void print_u64(n)
+
+    call void w_phi_post()
+    call void print_phi(n)
+
+    call void w_nl()
+    ret
+}
+
+fn sec_phi() -> void {
+  entry():
+    %_s0 = iconst i64 10
+    %_s1 = iconst i32 10
+    %_s2 = iconst i8 10
+    %_s3 = iconst i64 90
+    %_s4 = iconst i32 90
+    %_s5 = iconst i8 90
+    br loop(10)
+  loop(n: i64):
+    %done = icmp.sgt i64 n, 90
+    condbr %done, fin(), body(n)
+  body(n: i64):
+    call void phi_row(n)
+    %n2 = add i64 n, 10
+    br loop(%n2)
+  fin():
+
+    call void w_phi_true()
+    ret
+}
+
+fn sec_ops() -> void {
+  entry():
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 8
+    %_s4 = iconst i32 8
+    %_s5 = iconst i8 8
+    %_s6 = iconst i64 16
+    %_s7 = iconst i32 16
+    %_s8 = iconst i8 16
+    %_s9 = iconst i64 32
+    %_s10 = iconst i32 32
+    %_s11 = iconst i8 32
+    %_s12 = iconst i64 4096
+    %_s13 = iconst i32 4096
+    %_s14 = iconst i8 4096
+    %vals = call ptr malloc(4096)
+    %calls = call i64 fib_calls(32, 0, %vals)
+    %vp = gep i64 %vals, 0
+    %v32 = load i64, %vp
+
+    call void w_ops_rec()
+    call void print_u64(%calls)
+
+    call void w_ops_rec2()
+    call void print_u64(%v32)
+
+    call void w_nl()
+    call void w_ops_iter()
+    %adds = call i64 fib_iter_ops(32)
+    call void print_u64(%adds)
+
+    call void w_ops_iter2()
+    %out = call ptr malloc(16)
+    %scr = call ptr malloc(4096)
+    %cnt = call ptr malloc(8)
+    store i64 %cnt, 0
+    call void fib_pair(32, 0, %out, %scr, %cnt)
+    %muls = load i64, %cnt
+    %lv = call i64 bitlen(32)
+
+    call void w_ops_fast()
+    call void print_u64(%muls)
+
+    call void w_ops_fast2()
+    call void print_u64(%lv)
+
+    call void w_ops_fast3()
+    %mcnt = call ptr malloc(8)
+    store i64 %mcnt, 0
+    %mv = call i64 fib_matrix_c(32, %mcnt)
+    %mm = load i64, %mcnt
+    %sm = mul i64 %mm, 8
+
+    call void w_ops_mat()
+    call void print_u64(%mm)
+
+    call void w_ops_mat2()
+    call void print_u64(%sm)
+
+    call void w_ops_mat3()
+    ret
+}
+
+fn print_big_stats(ptr, i64) -> void {
+  entry(buf: ptr, n: i64):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 1
+    %_s4 = iconst i32 1
+    %_s5 = iconst i8 1
+    %dc = call i64 big_digit_count(buf, n)
+
+    call void w_digits()
+    call void print_u64(%dc)
+
+    call void w_nl()
+    call void w_digsum()
+    %ds = call i64 big_digit_sum(buf, n)
+    call void print_u64(%ds)
+
+    call void w_nl()
+    call void w_last9()
+    %l0p = gep i64 buf, 0
+    %l0 = load i64, %l0p
+    call void print_limb9(%l0)
+
+    call void w_nl()
+    call void w_first()
+    %t = sub i64 n, 1
+    %tp = gep i64 buf, %t
+    %tv = load i64, %tp
+    call void print_u64(%tv)
+    %t2 = sub i64 %t, 1
+    %tp2 = gep i64 buf, %t2
+    %tv2 = load i64, %tp2
+    call void print_limb9(%tv2)
+
+    call void w_dots()
+    call void w_nl()
+    ret
+}
+
+fn sec_big() -> void {
+  entry():
+    %_s0 = iconst i64 1000
+    %_s1 = iconst i32 1000
+    %_s2 = iconst i8 1000
+    %_s3 = iconst i64 8192
+    %_s4 = iconst i32 8192
+    %_s5 = iconst i8 8192
+    %_s6 = iconst i64 10000
+    %_s7 = iconst i32 10000
+    %_s8 = iconst i8 10000
+    %res = call ptr malloc(8192)
+    %n1 = call i64 big_fib(1000, %res)
+
+    call void w_big1_pre()
+    call void print_big(%res, %n1)
+
+    call void w_nl()
+    call void print_big_stats(%res, %n1)
+    %n2 = call i64 big_fib(10000, %res)
+
+    call void w_big2_pre()
+    call void print_big(%res, %n2)
+
+    call void w_nl()
+    call void print_big_stats(%res, %n2)
+    ret
+}
+
+fn main(i32, ptr) -> i32 {
+  entry(argc: i32, argv: ptr):
+    %_s0 = iconst i64 0
+    %_s1 = iconst i32 0
+    %_s2 = iconst i8 0
+    %_s3 = iconst i64 10000
+    %_s4 = iconst i32 10000
+    %_s5 = iconst i8 10000
+
+    call void w_banner1()
+    call void w_banner2()
+    call void w_banner3()
+    call void w_banner4()
+    call void w_sec_table()
+    call void sec_table()
+
+    call void w_sec_verify()
+    %p1 = call i64 v_rec()
+    %p2 = call i64 v_fast()
+    %p3 = call i64 v_mat()
+    %p4 = call i64 v_cas()
+    %p5 = call i64 v_sum()
+    %p6 = call i64 v_gcd()
+    %p7 = call i64 v_add()
+    %c1 = sdiv i64 %p1, 10000
+    %f1 = srem i64 %p1, 10000
+    %c2 = sdiv i64 %p2, 10000
+    %f2 = srem i64 %p2, 10000
+    %c3 = sdiv i64 %p3, 10000
+    %f3 = srem i64 %p3, 10000
+    %c4 = sdiv i64 %p4, 10000
+    %f4 = srem i64 %p4, 10000
+    %c5 = sdiv i64 %p5, 10000
+    %f5 = srem i64 %p5, 10000
+    %c6 = sdiv i64 %p6, 10000
+    %f6 = srem i64 %p6, 10000
+    %c7 = sdiv i64 %p7, 10000
+    %f7 = srem i64 %p7, 10000
+    %ca = add i64 %c1, %c2
+    %cb = add i64 %ca, %c3
+    %cc = add i64 %cb, %c4
+    %cd = add i64 %cc, %c5
+    %ce = add i64 %cd, %c6
+    %checks = add i64 %ce, %c7
+    %fa = add i64 %f1, %f2
+    %fb = add i64 %fa, %f3
+    %fc = add i64 %fb, %f4
+    %fd = add i64 %fc, %f5
+    %fe = add i64 %fd, %f6
+    %fails = add i64 %fe, %f7
+
+    call void w_sec_phi()
+    call void sec_phi()
+
+    call void w_sec_ops()
+    call void sec_ops()
+
+    call void w_sec_big()
+    call void sec_big()
+    %ok = icmp.eq i64 %fails, 0
+    condbr %ok, good(%fails, %checks), bad(%fails, %checks)
+  good(fails: i64, checks: i64):
+
+    call void w_verdict_ok()
+    call void print_u64(fails)
+
+    call void w_verdict2()
+    call void print_u64(checks)
+
+    call void w_verdict3()
+    ret 0
+  bad(fails: i64, checks: i64):
+
+    call void w_verdict_bad()
+    call void print_u64(fails)
+
+    call void w_verdict2()
+    call void print_u64(checks)
+
+    call void w_verdict3()
+    %fi = trunc i32 fails
+    ret %fi
+}
+
