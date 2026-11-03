@@ -1,0 +1,164 @@
+
+fn main(i32, ptr) -> i32 {
+  entry(argc: i32, argv: ptr):
+    %argc64 = sext i64 argc
+    %eq = icmp.eq i64 %argc64, %argc64
+    %one = zext i64 %eq
+    %has = icmp.sge i64 %argc64, 3
+    condbr %has, args(argv, %one), defs(%argc64)
+  args(argv: ptr, one: i64):
+    %p1 = gep ptr argv, one
+    %s1 = load ptr, %p1
+    %a1 = call i32 atoi(%s1)
+    %start = sext i64 %a1
+    %two = add i64 one, one
+    %p2 = gep ptr argv, %two
+    %s2 = load ptr, %p2
+    %a2 = call i32 atoi(%s2)
+    %count = sext i64 %a2
+    br setup(%start, %count)
+  defs(a64: i64):
+    %zero = sub i64 a64, a64
+    br setup(%zero, 8988277)
+  setup(start: i64, count: i64):
+    %va = call ptr malloc(3840)
+    %ia = call ptr malloc(1280)
+    %act = call ptr malloc(320)
+    %w = call ptr malloc(32768)
+    %c = call ptr malloc(64)
+    %st = call ptr malloc(128)
+    %cb = call ptr malloc(64800)
+    %cell = call ptr malloc(8)
+    %out = call ptr malloc(32768)
+    %hdr = call ptr malloc(64)
+    br init1(start, count, %va, %ia, %act, %w, %c, %st, %cb, %cell, %out, %hdr)
+  init1(start: i64, count: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr, hdr: ptr):
+    %r0 = call i64 buildtab(w)
+    %pc0 = gep f64 c, 0
+    %d0 = fmul f64 0.085, 44100.0
+    %q0 = fdiv f64 -1.0, %d0
+    %e0 = call f64 exp(%q0)
+    store f64 %pc0, %e0
+    %pc3 = gep f64 c, 3
+    %d3 = fmul f64 0.22, 44100.0
+    %q3 = fdiv f64 -1.0, %d3
+    %e3 = call f64 exp(%q3)
+    store f64 %pc3, %e3
+    %pc4 = gep f64 c, 4
+    %t4 = fmul f64 6.283185307179586, 5.5
+    %v4 = fdiv f64 %t4, 44100.0
+    store f64 %pc4, %v4
+    %z1 = call i64 zf(va, 480)
+    %z2 = call i64 zf(cb, 8100)
+    %z3 = call i64 zi(ia, 160)
+    %z4 = call i64 zi(act, 40)
+    %z5 = call i64 zi(st, 16)
+    br init2(start, count, va, ia, act, w, c, st, cb, cell, out, hdr)
+  init2(start: i64, count: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr, hdr: ptr):
+    %eq = icmp.eq i64 count, count
+    %one = zext i64 %eq
+    %two = add i64 %one, %one
+    %dsz = mul i64 count, 4
+    %rsz = add i64 %dsz, 36
+    %h0 = call i64 puttag(hdr, 0, 82, 73, 70, 70)
+    %h1 = call i64 put32(hdr, 4, %rsz)
+    %h2 = call i64 puttag(hdr, 8, 87, 65, 86, 69)
+    %h3 = call i64 puttag(hdr, 12, 102, 109, 116, 32)
+    %h4 = call i64 put32(hdr, 16, 16)
+    %h5 = call i64 put16(hdr, 20, %one)
+    %h6 = call i64 put16(hdr, 22, %two)
+    %h7 = call i64 put32(hdr, 24, 44100)
+    %h8 = call i64 put32(hdr, 28, 176400)
+    %h9 = call i64 put16(hdr, 32, 4)
+    %h10 = call i64 put16(hdr, 34, 16)
+    %h11 = call i64 puttag(hdr, 36, 100, 97, 116, 97)
+    %h12 = call i64 put32(hdr, 40, %dsz)
+    %wr = call i64 write(1, hdr, 44)
+    %rb0 = sub i64 start, 132300
+    %neg = icmp.slt i64 %rb0, 0
+    %zero = sub i64 %one, %one
+    %rb = select i64 %neg, %zero, %rb0
+    br scan(%zero, %rb, start, count, va, ia, act, w, c, st, cb, cell, out)
+  scan(evp: i64, rb: i64, start: i64, count: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %pc = dataptr 5
+    %ac = gep i32 %pc, 0
+    %nev32 = load i32, %ac
+    %nev = zext i64 %nev32
+    %done = icmp.sge i64 evp, %nev
+    condbr %done, scandone(evp, rb, start, count, va, ia, act, w, c, st, cb, cell, out), scanbody(evp, rb, start, count, va, ia, act, w, c, st, cb, cell, out)
+  scanbody(evp: i64, rb: i64, start: i64, count: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %ps = dataptr 0
+    %as = gep i32 %ps, evp
+    %sv = load i32, %as
+    %st64 = zext i64 %sv
+    %less = icmp.slt i64 %st64, rb
+    %ne = call i64 inc(evp)
+    condbr %less, scan(%ne, rb, start, count, va, ia, act, w, c, st, cb, cell, out), scandone(evp, rb, start, count, va, ia, act, w, c, st, cb, cell, out)
+  scandone(evp: i64, rb: i64, start: i64, count: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %pe = gep i64 st, 0
+    store i64 %pe, evp
+    %end = add i64 start, count
+    br ploop(rb, start, %end, va, ia, act, w, c, st, cb, cell, out)
+  ploop(idx: i64, start: i64, end: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %done = icmp.sge i64 idx, start
+    condbr %done, rloop(start, end, 0, va, ia, act, w, c, st, cb, cell, out), pbody(idx, start, end, va, ia, act, w, c, st, cb, cell, out)
+  pbody(idx: i64, start: i64, end: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %L = call f64 rsample(idx, va, ia, act, w, c, st, cb, cell)
+    %ni = call i64 inc(idx)
+    br ploop(%ni, start, end, va, ia, act, w, c, st, cb, cell, out)
+  rloop(idx: i64, end: i64, fill: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %done = icmp.sge i64 idx, end
+    condbr %done, ffin(fill, out), rbody(idx, end, fill, va, ia, act, w, c, st, cb, cell, out)
+  rbody(idx: i64, end: i64, fill: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %L = call f64 rsample(idx, va, ia, act, w, c, st, cb, cell)
+    %R = load f64, cell
+    br conv(idx, end, fill, va, ia, act, w, c, st, cb, cell, out, %L, %R)
+  conv(idx: i64, end: i64, fill: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr, L: f64, R: f64):
+    %cl = call f64 sclip(L)
+    %cr = call f64 sclip(R)
+    %sl = fmul f64 %cl, 32767.0
+    %sr = fmul f64 %cr, 32767.0
+    %il = fptosi i64 %sl
+    %ir = fptosi i64 %sr
+    %base = mul i64 fill, 4
+    %bl0 = and i64 %il, 255
+    %tl0 = trunc i8 %bl0
+    %a0 = gep i8 out, %base
+    store i8 %a0, %tl0
+    %bh0 = ashr i64 %il, 8
+    %bh1 = and i64 %bh0, 255
+    %th0 = trunc i8 %bh1
+    %o1 = add i64 %base, 1
+    %a1 = gep i8 out, %o1
+    store i8 %a1, %th0
+    %bl1 = and i64 %ir, 255
+    %tl1 = trunc i8 %bl1
+    %o2 = add i64 %base, 2
+    %a2 = gep i8 out, %o2
+    store i8 %a2, %tl1
+    %bh2 = ashr i64 %ir, 8
+    %bh3 = and i64 %bh2, 255
+    %th1 = trunc i8 %bh3
+    %o3 = add i64 %base, 3
+    %a3 = gep i8 out, %o3
+    store i8 %a3, %th1
+    %fill1 = call i64 inc(fill)
+    %full = icmp.sge i64 %fill1, 8192
+    condbr %full, flush(idx, end, va, ia, act, w, c, st, cb, cell, out), rloop2(idx, end, %fill1, va, ia, act, w, c, st, cb, cell, out)
+  rloop2(idx: i64, end: i64, fill: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %ni = call i64 inc(idx)
+    br rloop(%ni, end, fill, va, ia, act, w, c, st, cb, cell, out)
+  flush(idx: i64, end: i64, va: ptr, ia: ptr, act: ptr, w: ptr, c: ptr, st: ptr, cb: ptr, cell: ptr, out: ptr):
+    %wr = call i64 write(1, out, 32768)
+    %ni = call i64 inc(idx)
+    br rloop(%ni, end, 0, va, ia, act, w, c, st, cb, cell, out)
+  ffin(fill: i64, out: ptr):
+    %pos = icmp.sgt i64 fill, 0
+    condbr %pos, fwr(fill, out), fret()
+  fwr(fill: i64, out: ptr):
+    %n = mul i64 fill, 4
+    %wr = call i64 write(1, out, %n)
+    br fret()
+  fret():
+    ret 0
+}

@@ -1,0 +1,153 @@
+extern write(i64, ptr, i64) -> i64
+extern malloc(i64) -> ptr
+extern sin(f64) -> f64
+extern pow(f64, f64) -> f64
+extern exp(f64) -> f64
+extern atoi(ptr) -> i32
+
+fn midif(f64) -> f64 {
+  entry(m: f64):
+    %d = fsub f64 m, 69.0
+    %e = fdiv f64 %d, 12.0
+    %p = call f64 pow(2.0, %e)
+    %f = fmul f64 %p, 440.0
+    ret %f
+}
+
+fn buildtab(ptr) -> i64 {
+  entry(w: ptr):
+    br loop(0, w)
+  loop(i: i64, w: ptr):
+    %done = icmp.sge i64 i, 4096
+    condbr %done, fin(w), body(i, w)
+  body(i: i64, w: ptr):
+    %fi = uitofp f64 i
+    %ang0 = fmul f64 %fi, 6.283185307179586
+    %ang = fdiv f64 %ang0, 4096.0
+    %s = call f64 sin(%ang)
+    %a = gep f64 w, i
+    store f64 %a, %s
+    %ni = add i64 i, 1
+    br loop(%ni, w)
+  fin(w: ptr):
+    ret 0
+}
+
+fn wsin(ptr, f64) -> f64 {
+  entry(w: ptr, ph: f64):
+    %fi = fmul f64 ph, 4096.0
+    %ii = fptosi i64 %fi
+    %fii = uitofp f64 %ii
+    %fr = fsub f64 %fi, %fii
+    %a0 = gep f64 w, %ii
+    %w0 = load f64, %a0
+    %i1 = add i64 %ii, 1
+    %i1m = and i64 %i1, 4095
+    %a1 = gep f64 w, %i1m
+    %w1 = load f64, %a1
+    %d = fsub f64 %w1, %w0
+    %r0 = fmul f64 %d, %fr
+    %r = fadd f64 %w0, %r0
+    ret %r
+}
+
+fn sclip(f64) -> f64 {
+  entry(x: f64):
+    %gt = fcmp.ogt f64 x, 1.0
+    %y1 = select f64 %gt, 1.0, x
+    %lt = fcmp.olt f64 %y1, -1.0
+    %y = select f64 %lt, -1.0, %y1
+    ret %y
+}
+
+fn put32(ptr, i64, i64) -> i64 {
+  entry(p: ptr, off: i64, val: i64):
+    %b0 = and i64 val, 255
+    %t0 = trunc i8 %b0
+    %a0 = gep i8 p, off
+    store i8 %a0, %t0
+    %s1 = lshr i64 val, 8
+    %b1 = and i64 %s1, 255
+    %t1 = trunc i8 %b1
+    %o1 = add i64 off, 1
+    %a1 = gep i8 p, %o1
+    store i8 %a1, %t1
+    %s2 = lshr i64 val, 16
+    %b2 = and i64 %s2, 255
+    %t2 = trunc i8 %b2
+    %o2 = add i64 off, 2
+    %a2 = gep i8 p, %o2
+    store i8 %a2, %t2
+    %s3 = lshr i64 val, 24
+    %b3 = and i64 %s3, 255
+    %t3 = trunc i8 %b3
+    %o3 = add i64 off, 3
+    %a3 = gep i8 p, %o3
+    store i8 %a3, %t3
+    ret 0
+}
+
+fn put16(ptr, i64, i64) -> i64 {
+  entry(p: ptr, off: i64, val: i64):
+    %b0 = and i64 val, 255
+    %t0 = trunc i8 %b0
+    %a0 = gep i8 p, off
+    store i8 %a0, %t0
+    %s1 = lshr i64 val, 8
+    %b1 = and i64 %s1, 255
+    %t1 = trunc i8 %b1
+    %o1 = add i64 off, 1
+    %a1 = gep i8 p, %o1
+    store i8 %a1, %t1
+    ret 0
+}
+
+fn puttag(ptr, i64, i64, i64, i64, i64) -> i64 {
+  entry(p: ptr, off: i64, c0: i64, c1: i64, c2: i64, c3: i64):
+    %t0 = trunc i8 c0
+    %a0 = gep i8 p, off
+    store i8 %a0, %t0
+    %t1 = trunc i8 c1
+    %o1 = add i64 off, 1
+    %a1 = gep i8 p, %o1
+    store i8 %a1, %t1
+    %t2 = trunc i8 c2
+    %o2 = add i64 off, 2
+    %a2 = gep i8 p, %o2
+    store i8 %a2, %t2
+    %t3 = trunc i8 c3
+    %o3 = add i64 off, 3
+    %a3 = gep i8 p, %o3
+    store i8 %a3, %t3
+    ret 0
+}
+
+fn zf(ptr, i64) -> i64 {
+  entry(p: ptr, n: i64):
+    br loop(0, p, n)
+  loop(i: i64, p: ptr, n: i64):
+    %done = icmp.sge i64 i, n
+    condbr %done, fin(p), body(i, p, n)
+  body(i: i64, p: ptr, n: i64):
+    %a = gep f64 p, i
+    store f64 %a, 0.0
+    %ni = add i64 i, 1
+    br loop(%ni, p, n)
+  fin(p: ptr):
+    ret 0
+}
+
+fn zi(ptr, i64) -> i64 {
+  entry(p: ptr, n: i64):
+    br loop(0, p, n)
+  loop(i: i64, p: ptr, n: i64):
+    %done = icmp.sge i64 i, n
+    condbr %done, fin(p), body(i, p, n)
+  body(i: i64, p: ptr, n: i64):
+    %a = gep i64 p, i
+    store i64 %a, 0
+    %ni = add i64 i, 1
+    br loop(%ni, p, n)
+  fin(p: ptr):
+    ret 0
+}

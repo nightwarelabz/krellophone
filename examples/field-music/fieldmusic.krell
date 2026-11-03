@@ -1,0 +1,449 @@
+extern write(i64, ptr, i64) -> i64
+extern malloc(i64) -> ptr
+extern sin(f64) -> f64
+extern pow(f64, f64) -> f64
+
+data roots: i8 = { 38, 34, 41, 33 }
+data bpat: i8 = { 0, 99, 0, 99, 0, 99, 0, 99, 0, 99, 0, 99, 0, 99, 12, 99 }
+data mel: i8 = { 62, 65, 67, 69, 70, 72, 74, 77 }
+data pad: i8 = { 50, 53, 55, 57, 58, 60, 62, 65 }
+data hdr: i8 = { 82, 73, 70, 70, 4, 192, 80, 0, 87, 65, 86, 69, 102, 109, 116, 32, 16, 0, 0, 0, 1, 0, 1, 0, 68, 172, 0, 0, 136, 88, 1, 0, 2, 0, 16, 0, 100, 97, 116, 97, 224, 191, 80, 0 }
+
+fn midif(f64) -> f64 {
+  entry(m: f64):
+    %d = fsub f64 m, 69.0
+    %e = fdiv f64 %d, 12.0
+    %p = call f64 pow(2.0, %e)
+    %f = fmul f64 %p, 440.0
+    ret %f
+}
+
+
+fn noise(i64) -> f64 {
+  entry(idx: i64):
+    %h1 = mul i64 idx, 2654435761
+    %h2 = lshr i64 %h1, 13
+    %h3 = xor i64 %h1, %h2
+    %h4 = mul i64 %h3, 1103515245
+    %u = and i64 %h4, 16777215
+    %uf = uitofp f64 %u
+    %n0 = fdiv f64 %uf, 8388608.0
+    %n = fsub f64 %n0, 1.0
+    ret %n
+}
+
+fn field(f64, f64, f64) -> f64 {
+  entry(x: f64, y: f64, ph: f64):
+    %a1 = fmul f64 y, 6.0
+    %s1a = call f64 sin(%a1)
+    %t1a = fmul f64 x, 4.0
+    %t1b = fmul f64 %s1a, 2.0
+    %t1s = fadd f64 %t1a, %t1b
+    %t1 = fadd f64 %t1s, ph
+    %s1 = call f64 sin(%t1)
+    %a2 = fmul f64 x, 3.0
+    %s2a = call f64 sin(%a2)
+    %t2a = fmul f64 y, 5.0
+    %t2b = fmul f64 %s2a, 1.5
+    %t2s = fadd f64 %t2a, %t2b
+    %t2 = fsub f64 %t2s, ph
+    %s2 = call f64 sin(%t2)
+    %t3a = fadd f64 x, y
+    %t3s = fmul f64 %t3a, 2.5
+    %p2 = fmul f64 ph, 2.0
+    %t3 = fadd f64 %t3s, %p2
+    %s3 = call f64 sin(%t3)
+    %vs = fadd f64 %s1, %s2
+    %vs2 = fadd f64 %vs, %s3
+    %v = fmul f64 %vs2, 0.3333333333333333
+    ret %v
+}
+
+fn sample(i64) -> i64 {
+  entry(i: i64):
+    %tf = uitofp f64 i
+    %t = fdiv f64 %tf, 44100.0
+    %stepf = fmul f64 %t, 6.666666666666667
+    %step = fptosi i64 %stepf
+    %sf2 = uitofp f64 %step
+    %spos = fsub f64 %stepf, %sf2
+    %bar = sdiv i64 %step, 16
+    %b16 = mul i64 %bar, 16
+    %instep = sub i64 %step, %b16
+    %ph = fmul f64 %t, 1.2566370614359172
+    br mel(i, %t, %bar, %step, %instep, %spos, %ph, 0.0)
+  mel(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %ns = sdiv i64 %step, 2
+    %nsf = uitofp f64 %ns
+    %fxm = fmul f64 %nsf, 0.31
+    %sarg = fmul f64 %nsf, 0.11
+    %sv = call f64 sin(%sarg)
+    %svm = fmul f64 %sv, 0.5
+    %fym = fadd f64 1.85, %svm
+    %vm = call f64 field(%fxm, %fym, ph)
+    %vm1 = fadd f64 %vm, 1.0
+    %degf = fmul f64 %vm1, 4.0
+    %deg = fptosi i64 %degf
+    %dhi = icmp.sgt i64 %deg, 7
+    %seven = iconst i64 7
+    %degc = select i64 %dhi, %seven, %deg
+    %melp = dataptr 2
+    %mp = gep i8 %melp, %degc
+    %mb = load i8, %mp
+    %mmidi = zext i64 %mb
+    %mmidif = uitofp f64 %mmidi
+    %mfreq = call f64 midif(%mmidif)
+    %bt = fmul f64 %nsf, 0.3
+    %btt = fsub f64 t, %bt
+    %bf = fdiv f64 %btt, 0.3
+    %fxg = fmul f64 %nsf, 0.23
+    %fxg2 = fadd f64 %fxg, 40.0
+    %wg = call f64 field(%fxg2, 0.55, ph)
+    %gon = fcmp.ogt f64 %wg, -0.25
+    %gz = zext i64 %gon
+    %gf = uitofp f64 %gz
+    %atk0 = fmul f64 %bf, 12.0
+    %ahi = fcmp.ogt f64 %atk0, 1.0
+    %atk = select f64 %ahi, 1.0, %atk0
+    %q = fsub f64 1.0, %bf
+    %env0 = fmul f64 %q, %q
+    %env1 = fmul f64 %env0, 1.7
+    %env = fmul f64 %atk, %env1
+    %ph1 = fmul f64 6.283185307179586, %mfreq
+    %a1 = fmul f64 %ph1, %btt
+    %o1 = call f64 sin(%a1)
+    %f2 = fmul f64 %mfreq, 2.003
+    %ph2 = fmul f64 6.283185307179586, %f2
+    %a2 = fmul f64 %ph2, %btt
+    %o2s = call f64 sin(%a2)
+    %o2 = fmul f64 %o2s, 0.35
+    %osc = fadd f64 %o1, %o2
+    %mv0 = fmul f64 %osc, %env
+    %mv1 = fmul f64 %mv0, %gf
+    %melv = fmul f64 %mv1, 0.5
+    %acc1 = fadd f64 acc, %melv
+    br pad(i, t, bar, step, instep, spos, ph, %acc1)
+  pad(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %np = sdiv i64 %step, 8
+    %npf = uitofp f64 %np
+    %fxp0 = fmul f64 %npf, 0.07
+    %fxp = fadd f64 %fxp0, 80.0
+    %vp = call f64 field(%fxp, 2.2, ph)
+    %vp1 = fadd f64 %vp, 1.0
+    %pdegf = fmul f64 %vp1, 4.0
+    %pdeg = fptosi i64 %pdegf
+    %pdhi = icmp.sgt i64 %pdeg, 7
+    %pseven = iconst i64 7
+    %pdegc = select i64 %pdhi, %pseven, %pdeg
+    %padp = dataptr 3
+    %pp = gep i8 %padp, %pdegc
+    %pb = load i8, %pp
+    %pmidi = zext i64 %pb
+    %pmidif = uitofp f64 %pmidi
+    %pfreq = call f64 midif(%pmidif)
+    %pt = fmul f64 %npf, 1.2
+    %ptt = fsub f64 t, %pt
+    %pf2 = fdiv f64 %ptt, 1.2
+    %patk0 = fmul f64 %pf2, 3.0
+    %pahi = fcmp.ogt f64 %patk0, 1.0
+    %patk = select f64 %pahi, 1.0, %patk0
+    %pdec0 = fmul f64 %pf2, 0.35
+    %pdec = fsub f64 1.0, %pdec0
+    %penv = fmul f64 %patk, %pdec
+    %pa1 = fmul f64 6.283185307179586, %pfreq
+    %pa2 = fmul f64 %pa1, %ptt
+    %po1 = call f64 sin(%pa2)
+    %pfq2 = fmul f64 %pfreq, 2.0
+    %pa3 = fmul f64 6.283185307179586, %pfq2
+    %pa4 = fmul f64 %pa3, %ptt
+    %po2s = call f64 sin(%pa4)
+    %po2 = fmul f64 %po2s, 0.4
+    %posc = fadd f64 %po1, %po2
+    %pv0 = fmul f64 %posc, %penv
+    %padv = fmul f64 %pv0, 0.16
+    %acc2 = fadd f64 acc, %padv
+    br bass(i, t, bar, step, instep, spos, ph, %acc2)
+  bass(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %q4 = srem i64 bar, 4
+    %rp = dataptr 0
+    %rpp = gep i8 %rp, %q4
+    %rb = load i8, %rpp
+    %rootm = zext i64 %rb
+    %bp = dataptr 1
+    %bpp = gep i8 %bp, instep
+    %bb = load i8, %bpp
+    %off = zext i64 %bb
+    %isrest = icmp.eq i64 %off, 99
+    %irz = zext i64 %isrest
+    %act0 = sub i64 1, %irz
+    %bmidi = add i64 %rootm, %off
+    %bmidif = uitofp f64 %bmidi
+    %bfreq = call f64 midif(%bmidif)
+    %b2 = icmp.sge i64 bar, 2
+    %b2z = zext i64 %b2
+    %b17 = icmp.sge i64 bar, 17
+    %b17z = zext i64 %b17
+    %b19 = icmp.sle i64 bar, 19
+    %b19z = zext i64 %b19
+    %brki = and i64 %b17z, %b19z
+    %notbrk = sub i64 1, %brki
+    %full = mul i64 %b2z, %notbrk
+    %sp8 = srem i64 instep, 8
+    %spe = icmp.eq i64 %sp8, 0
+    %spez = zext i64 %spe
+    %sp1 = mul i64 %brki, %spez
+    %sparseg = mul i64 %b2z, %sp1
+    %on = add i64 %full, %sparseg
+    %onf = uitofp f64 %on
+    %actf = uitofp f64 %act0
+    %gate = fmul f64 %actf, %onf
+    %be = fsub f64 1.0, spos
+    %ba1 = fmul f64 6.283185307179586, %bfreq
+    %ba2 = fmul f64 %ba1, t
+    %bo1 = call f64 sin(%ba2)
+    %bf2 = fmul f64 %bfreq, 2.0
+    %ba3 = fmul f64 6.283185307179586, %bf2
+    %ba4 = fmul f64 %ba3, t
+    %bo2s = call f64 sin(%ba4)
+    %bo2 = fmul f64 %bo2s, 0.5
+    %bosc = fadd f64 %bo1, %bo2
+    %bv0 = fmul f64 %bosc, %be
+    %bv1 = fmul f64 %bv0, %gate
+    %bassv = fmul f64 %bv1, 0.42
+    %acc3 = fadd f64 acc, %bassv
+    br chords(i, t, bar, step, instep, spos, ph, %acc3)
+  chords(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %cq = srem i64 bar, 4
+    %crp = dataptr 0
+    %crpp = gep i8 %crp, %cq
+    %crb = load i8, %crpp
+    %croot = zext i64 %crb
+    %cmidi = add i64 %croot, 12
+    %cmidif = uitofp f64 %cmidi
+    %cf1 = call f64 midif(%cmidif)
+    %cf2 = fmul f64 %cf1, 1.4983070768766815
+    %cf3 = fmul f64 %cf1, 2.0
+    %barf = uitofp f64 bar
+    %bpos0 = fmul f64 %barf, 2.4
+    %bpos = fsub f64 t, %bpos0
+    %catk0 = fmul f64 %bpos, 8.0
+    %cahi = fcmp.ogt f64 %catk0, 1.0
+    %catk = select f64 %cahi, 1.0, %catk0
+    %bpf = fdiv f64 %bpos, 2.4
+    %cdec0 = fmul f64 %bpf, 0.4
+    %cdec = fsub f64 1.0, %cdec0
+    %cenv = fmul f64 %catk, %cdec
+    %cb6 = icmp.sge i64 bar, 6
+    %cb6z = zext i64 %cb6
+    %cb17 = icmp.sge i64 bar, 17
+    %cb17z = zext i64 %cb17
+    %cb19 = icmp.sle i64 bar, 19
+    %cb19z = zext i64 %cb19
+    %cbrk = and i64 %cb17z, %cb19z
+    %cnotbrk = sub i64 1, %cbrk
+    %cmain = mul i64 %cb6z, %cnotbrk
+    %c20 = icmp.sge i64 bar, 20
+    %c20z = zext i64 %c20
+    %c23 = icmp.sle i64 bar, 23
+    %c23z = zext i64 %c23
+    %cfull2 = and i64 %c20z, %c23z
+    %con = or i64 %cmain, %cfull2
+    %conf = uitofp f64 %con
+    %ca1 = fmul f64 6.283185307179586, %cf1
+    %ca2 = fmul f64 %ca1, t
+    %cs1s = call f64 sin(%ca2)
+    %cs1 = fmul f64 %cs1s, 0.5
+    %ca3 = fmul f64 6.283185307179586, %cf2
+    %ca4 = fmul f64 %ca3, t
+    %cs2s = call f64 sin(%ca4)
+    %cs2 = fmul f64 %cs2s, 0.35
+    %ca5 = fmul f64 6.283185307179586, %cf3
+    %ca6 = fmul f64 %ca5, t
+    %cs3s = call f64 sin(%ca6)
+    %cs3 = fmul f64 %cs3s, 0.25
+    %csum = fadd f64 %cs1, %cs2
+    %csum2 = fadd f64 %csum, %cs3
+    %cneg = fcmp.olt f64 %csum2, 0.0
+    %cabs0 = fsub f64 0.0, %csum2
+    %cabs = select f64 %cneg, %cabs0, %csum2
+    %cden = fadd f64 1.0, %cabs
+    %csc = fdiv f64 %csum2, %cden
+    %cv0 = fmul f64 %csc, %cenv
+    %cv1 = fmul f64 %cv0, %conf
+    %chv = fmul f64 %cv1, 0.5
+    %acc4 = fadd f64 acc, %chv
+    br kick(i, t, bar, step, instep, spos, ph, %acc4)
+  kick(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %kstep = srem i64 step, 8
+    %isk = icmp.eq i64 %kstep, 0
+    %iskz = zext i64 %isk
+    %iskf = uitofp f64 %iskz
+    %k17 = icmp.sge i64 bar, 17
+    %k17z = zext i64 %k17
+    %k19 = icmp.sle i64 bar, 19
+    %k19z = zext i64 %k19
+    %kbrk = and i64 %k17z, %k19z
+    %knotbrk = sub i64 1, %kbrk
+    %ie0 = icmp.eq i64 instep, 0
+    %ie0z = zext i64 %ie0
+    %kon = or i64 %knotbrk, %ie0z
+    %konf = uitofp f64 %kon
+    %kt = fmul f64 spos, 0.15
+    %kdrop = fmul f64 spos, 70.0
+    %kfr = fsub f64 120.0, %kdrop
+    %kpa = fmul f64 6.283185307179586, %kfr
+    %kpb = fmul f64 %kpa, %kt
+    %ko = call f64 sin(%kpb)
+    %kq = fsub f64 1.0, spos
+    %kq2 = fmul f64 %kq, %kq
+    %kenv = fmul f64 %kq2, %kq
+    %kv0 = fmul f64 %ko, %kenv
+    %kv1 = fmul f64 %kv0, %iskf
+    %kv2 = fmul f64 %kv1, %konf
+    %kickv = fmul f64 %kv2, 0.8
+    %acc5 = fadd f64 acc, %kickv
+    br snare(i, t, bar, step, instep, spos, ph, %acc5)
+  snare(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %s4 = icmp.eq i64 instep, 4
+    %s4z = zext i64 %s4
+    %s12 = icmp.eq i64 instep, 12
+    %s12z = zext i64 %s12
+    %iss = or i64 %s4z, %s12z
+    %issf = uitofp f64 %iss
+    %sb6 = icmp.sge i64 bar, 6
+    %sb6z = zext i64 %sb6
+    %sb17 = icmp.sge i64 bar, 17
+    %sb17z = zext i64 %sb17
+    %sb19 = icmp.sle i64 bar, 19
+    %sb19z = zext i64 %sb19
+    %sbrk = and i64 %sb17z, %sb19z
+    %snotbrk = sub i64 1, %sbrk
+    %smain = mul i64 %sb6z, %snotbrk
+    %s20 = icmp.sge i64 bar, 20
+    %s20z = zext i64 %s20
+    %s23 = icmp.sle i64 bar, 23
+    %s23z = zext i64 %s23
+    %sfull2 = and i64 %s20z, %s23z
+    %son = or i64 %smain, %sfull2
+    %sonf = uitofp f64 %son
+    %snz = call f64 noise(i)
+    %sq = fsub f64 1.0, spos
+    %senv = fmul f64 %sq, %sq
+    %sta = fmul f64 6.283185307179586, 190.0
+    %stb = fmul f64 %sta, t
+    %sto = call f64 sin(%stb)
+    %stn = fmul f64 %sto, 0.3
+    %snzv = fmul f64 %snz, 0.7
+    %ssum = fadd f64 %snzv, %stn
+    %sv0 = fmul f64 %ssum, %senv
+    %sv1 = fmul f64 %sv0, %issf
+    %sv2 = fmul f64 %sv1, %sonf
+    %snarev = fmul f64 %sv2, 0.4
+    %acc6 = fadd f64 acc, %snarev
+    br hats(i, t, bar, step, instep, spos, ph, %acc6)
+  hats(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64):
+    %h2 = srem i64 instep, 2
+    %ish = icmp.eq i64 %h2, 0
+    %ishz = zext i64 %ish
+    %ishf = uitofp f64 %ishz
+    %hb4 = icmp.sge i64 bar, 4
+    %hb4z = zext i64 %hb4
+    %h17 = icmp.sge i64 bar, 17
+    %h17z = zext i64 %h17
+    %h19 = icmp.sle i64 bar, 19
+    %h19z = zext i64 %h19
+    %hbrk = and i64 %h17z, %h19z
+    %hnotbrk = sub i64 1, %hbrk
+    %hmain = mul i64 %hb4z, %hnotbrk
+    %h20 = icmp.sge i64 bar, 20
+    %h20z = zext i64 %h20
+    %h23 = icmp.sle i64 bar, 23
+    %h23z = zext i64 %h23
+    %hfull2 = and i64 %h20z, %h23z
+    %hon = or i64 %hmain, %hfull2
+    %honf = uitofp f64 %hon
+    %hi2 = add i64 i, 777777
+    %hnz = call f64 noise(%hi2)
+    %hq = fsub f64 1.0, spos
+    %hq2 = fmul f64 %hq, %hq
+    %henv = fmul f64 %hq2, %hq2
+    %hv0 = fmul f64 %hnz, %henv
+    %hv1 = fmul f64 %hv0, %ishf
+    %hv2 = fmul f64 %hv1, %honf
+    %hatv = fmul f64 %hv2, 0.12
+    %acc7 = fadd f64 acc, %hatv
+    br shaker(i, t, bar, step, instep, spos, ph, %acc7, %honf)
+  shaker(i: i64, t: f64, bar: i64, step: i64, instep: i64, spos: f64, ph: f64, acc: f64, honf: f64):
+    %sh2 = srem i64 instep, 2
+    %odd = icmp.eq i64 %sh2, 1
+    %oddz = zext i64 %odd
+    %oddf = uitofp f64 %oddz
+    %stepf2 = uitofp f64 step
+    %fxs = fmul f64 %stepf2, 0.9
+    %wsh = call f64 field(%fxs, 0.2, ph)
+    %shon = fcmp.ogt f64 %wsh, 0.45
+    %shz = zext i64 %shon
+    %shf = uitofp f64 %shz
+    %shi = add i64 i, 333333
+    %shnz = call f64 noise(%shi)
+    %shq = fsub f64 1.0, spos
+    %shenv = fmul f64 %shq, %shq
+    %shv0 = fmul f64 %shnz, %shenv
+    %shv1 = fmul f64 %shv0, %oddf
+    %shv2 = fmul f64 %shv1, %shf
+    %shv3 = fmul f64 %shv2, honf
+    %shakv = fmul f64 %shv3, 0.06
+    %acc8 = fadd f64 acc, %shakv
+    br master(i, t, %acc8)
+  master(i: i64, t: f64, acc: f64):
+    %fi0 = fmul f64 t, 6.666666666666667
+    %fihi = fcmp.ogt f64 %fi0, 1.0
+    %fin = select f64 %fihi, 1.0, %fi0
+    %rem = fsub f64 60.0, t
+    %fo0 = fdiv f64 %rem, 3.0
+    %folow = fcmp.olt f64 %fo0, 0.0
+    %foa = select f64 %folow, 0.0, %fo0
+    %fohi = fcmp.ogt f64 %foa, 1.0
+    %fout = select f64 %fohi, 1.0, %foa
+    %m1 = fmul f64 acc, 0.85
+    %mneg = fcmp.olt f64 %m1, 0.0
+    %mabs0 = fsub f64 0.0, %m1
+    %mabs = select f64 %mneg, %mabs0, %m1
+    %mden = fadd f64 1.0, %mabs
+    %scv = fdiv f64 %m1, %mden
+    %v0 = fmul f64 %scv, %fin
+    %v = fmul f64 %v0, %fout
+    %s16 = fmul f64 %v, 26214.0
+    %si = fptosi i64 %s16
+    ret %si
+}
+
+fn main(i32, ptr) -> i32 {
+  entry(argc: i32, argv: ptr):
+    %hdr = dataptr 4
+    %w0 = call i64 write(1, %hdr, 44)
+    %buf = call ptr malloc(16800)
+    %one = iconst i64 1
+    %m1 = iconst i64 -1
+    br chunk(0, %buf, %one, %m1)
+  chunk(c: i64, buf: ptr, one: i64, m1: i64):
+    %lt = icmp.slt i64 c, 315
+    condbr %lt, fill(0, c, buf, one, m1), fin(0)
+  fill(j: i64, c: i64, buf: ptr, one: i64, m1: i64):
+    %base = mul i64 c, 8400
+    %idx = add i64 %base, j
+    %sv = call i64 sample(%idx)
+    %sv16 = trunc i16 %sv
+    %off = mul i64 j, 2
+    %p = gep i8 buf, %off
+    store i16 %p, %sv16
+    %jn = add i64 j, 1
+    %go = icmp.slt i64 %jn, 8400
+    condbr %go, fill(%jn, c, buf, one, m1), flush(c, buf, one, m1)
+  flush(c: i64, buf: ptr, one: i64, m1: i64):
+    %wr = call i64 write(1, buf, 16800)
+    %cn = add i64 c, 1
+    br chunk(%cn, buf, one, m1)
+  fin(z: i32):
+    ret z
+}

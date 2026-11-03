@@ -1,0 +1,132 @@
+
+fn note_on(i64, ptr, ptr, ptr, ptr, ptr) -> i64 {
+  entry(evi: i64, va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr):
+    %eq = icmp.eq i64 evi, evi
+    %one = zext i64 %eq
+    %pd = dataptr 1
+    %pn = dataptr 2
+    %pv = dataptr 3
+    %pp = dataptr 4
+    %ad = gep i32 %pd, evi
+    %dur32 = load i32, %ad
+    %gate = zext i64 %dur32
+    %an = gep i8 %pn, evi
+    %nb = load i8, %an
+    %note = zext i64 %nb
+    %av = gep i8 %pv, evi
+    %vb0 = load i8, %av
+    %vel = zext i64 %vb0
+    %ap = gep i8 %pp, evi
+    %pb = load i8, %ap
+    %preset = zext i64 %pb
+    %pnact = gep i64 st, 2
+    %nact = load i64, %pnact
+    br findslot(0, va, ia, act, st, c, gate, note, vel, preset, %nact, %one)
+  findslot(s: i64, va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr, gate: i64, note: i64, vel: i64, preset: i64, nact: i64, one: i64):
+    %done = icmp.sge i64 s, 40
+    condbr %done, steal0(va, ia, act, st, c, gate, note, vel, preset, nact, one), memb(0, s, 0, va, ia, act, st, c, gate, note, vel, preset, nact, one)
+  memb(j: i64, s: i64, f: i64, va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr, gate: i64, note: i64, vel: i64, preset: i64, nact: i64, one: i64):
+    %done = icmp.sge i64 j, nact
+    condbr %done, membfin(s, f, va, ia, act, st, c, gate, note, vel, preset, nact, one), membbody(j, s, f, va, ia, act, st, c, gate, note, vel, preset, nact, one)
+  membbody(j: i64, s: i64, f: i64, va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr, gate: i64, note: i64, vel: i64, preset: i64, nact: i64, one: i64):
+    %pa = gep i64 act, j
+    %a = load i64, %pa
+    %eq2 = icmp.eq i64 %a, s
+    %eqi = zext i64 %eq2
+    %f2 = or i64 f, %eqi
+    %nj = add i64 j, one
+    br memb(%nj, s, %f2, va, ia, act, st, c, gate, note, vel, preset, nact, one)
+  membfin(s: i64, f: i64, va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr, gate: i64, note: i64, vel: i64, preset: i64, nact: i64, one: i64):
+    %free = icmp.eq i64 f, 0
+    %ns = add i64 s, one
+    condbr %free, init1(s, one, va, ia, act, st, c, gate, note, vel, preset, nact, one), findslot(%ns, va, ia, act, st, c, gate, note, vel, preset, nact, one)
+  steal0(va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr, gate: i64, note: i64, vel: i64, preset: i64, nact: i64, one: i64):
+    %pa = gep i64 act, 0
+    %s0 = load i64, %pa
+    br init1(%s0, 0, va, ia, act, st, c, gate, note, vel, preset, nact, one)
+  init1(s: i64, apflag: i64, va: ptr, ia: ptr, act: ptr, st: ptr, c: ptr, gate: i64, note: i64, vel: i64, preset: i64, nact: i64, one: i64):
+    %ib = mul i64 s, 4
+    %pa = gep i64 ia, %ib
+    %pa1 = gep i64 %pa, 1
+    store i64 %pa1, 0
+    %pa2 = gep i64 %pa, 2
+    store i64 %pa2, gate
+    %pa3 = gep i64 %pa, 3
+    store i64 %pa3, preset
+    %vb = mul i64 s, 12
+    %qa = gep f64 va, %vb
+    store f64 %qa, 0.0
+    %qa2 = gep f64 %qa, 2
+    store f64 %qa2, 0.0
+    %qa3 = gep f64 %qa, 3
+    store f64 %qa3, 1.0
+    %qa11 = gep f64 %qa, 11
+    store f64 %qa11, 0.0
+    %notef = uitofp f64 note
+    %freq = call f64 midif(%notef)
+    %pstep = fdiv f64 %freq, 44100.0
+    %qa1 = gep f64 %qa, 1
+    store f64 %qa1, %pstep
+    %reg0 = fsub f64 60.0, %notef
+    %reg = fdiv f64 %reg0, 24.0
+    %pw = call f64 pow(2.0, %reg)
+    %tau0 = fmul f64 0.85, %pw
+    %lt = fcmp.olt f64 %tau0, 0.22
+    %tau1 = select f64 %lt, 0.22, %tau0
+    %gt = fcmp.ogt f64 %tau1, 2.4
+    %tau = select f64 %gt, 2.4, %tau1
+    %den = fmul f64 %tau, 44100.0
+    %q = fdiv f64 -1.0, %den
+    %coef = call f64 exp(%q)
+    %qa4 = gep f64 %qa, 4
+    store f64 %qa4, %coef
+    br init2(s, apflag, va, act, st, nact, %notef, vel, %vb, one)
+  init2(s: i64, apflag: i64, va: ptr, act: ptr, st: ptr, nact: i64, notef: f64, vel: i64, vb: i64, one: i64):
+    %velf = uitofp f64 vel
+    %vn = fdiv f64 %velf, 127.0
+    %ap25 = call f64 pow(%vn, 1.25)
+    %amp = fmul f64 0.30, %ap25
+    %qa = gep f64 va, vb
+    %qa5 = gep f64 %qa, 5
+    store f64 %qa5, %amp
+    %b0 = fmul f64 0.75, %vn
+    %b = fadd f64 0.35, %b0
+    %p2 = fmul f64 0.5, %b
+    %qa8 = gep f64 %qa, 8
+    store f64 %qa8, %p2
+    %bb = fmul f64 %b, %b
+    %p3v = fmul f64 0.22, %bb
+    %qa9 = gep f64 %qa, 9
+    store f64 %qa9, %p3v
+    %bbb = fmul f64 %bb, %b
+    %p4v = fmul f64 0.09, %bbb
+    %qa10 = gep f64 %qa, 10
+    store f64 %qa10, %p4v
+    %pf0 = fsub f64 notef, 60.0
+    %pf1 = fdiv f64 %pf0, 38.0
+    %lt = fcmp.olt f64 %pf1, -1.0
+    %pf2 = select f64 %lt, -1.0, %pf1
+    %gt = fcmp.ogt f64 %pf2, 1.0
+    %pf = select f64 %gt, 1.0, %pf2
+    %pan = fmul f64 %pf, 0.5
+    %gl0 = fmul f64 0.30, %pan
+    %gl = fsub f64 0.80, %gl0
+    %qa6 = gep f64 %qa, 6
+    store f64 %qa6, %gl
+    %gr = fadd f64 0.80, %gl0
+    %qa7 = gep f64 %qa, 7
+    store f64 %qa7, %gr
+    br fin2(apflag, s, act, st, nact, one)
+  fin2(apflag: i64, s: i64, act: ptr, st: ptr, nact: i64, one: i64):
+    %app = icmp.ne i64 apflag, 0
+    condbr %app, appblock(s, act, st, nact, one), doneblock()
+  appblock(s: i64, act: ptr, st: ptr, nact: i64, one: i64):
+    %pa = gep i64 act, nact
+    store i64 %pa, s
+    %ps = gep i64 st, 2
+    %nn = add i64 nact, one
+    store i64 %ps, %nn
+    br doneblock()
+  doneblock():
+    ret 0
+}
