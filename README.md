@@ -87,6 +87,13 @@ score tables, then `ext.inc`, `engine_body.krell`, `noteon.krell`,
   the light — in `fibfilm4` the field spirals with differential shear
   and strong onsets launch wavefronts from the center through the
   total circumference. The films are release assets.
+- **examples/live-count/** — a speed demonstration film: every frame
+  computed live by `livecount.krell`, golden-angle phyllotaxis particles
+  by recurrence, the per-frame count climbing from 10,000 to about
+  2.99 million (about 904 million particles across the film), the count
+  stamped onto each frame by the program itself. The soundtrack
+  (`livecount_audio.krell`) is an 8-voice Krell synth whose note density
+  ramps with the particle climb. The film is a release asset.
 
 ## License
 
